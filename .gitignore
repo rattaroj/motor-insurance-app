@@ -1,0 +1,11 @@
+# backend
+bin/
+obj/
+# frontend
+node_modules/
+.next/
+.env.local
+# misc
+*.user
+CLAUDE.MD
+.claude*
