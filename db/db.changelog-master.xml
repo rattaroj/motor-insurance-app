@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.25.xsd">
+
+  <changeSet id="V001-lookups" author="rattaroj.nit">
+    <sqlFile path="./scripts/V001__lookups.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      DROP TABLE IF EXISTS payment_status;
+      DROP TABLE IF EXISTS claim_status;
+      DROP TABLE IF EXISTS policy_status;
+    </rollback>
+  </changeSet>
+
+  <changeSet id="V002-core" author="rattaroj.nit">
+    <sqlFile path="./scripts/V002__core.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      ALTER TABLE claim SET (SYSTEM_VERSIONING = OFF);
+      ALTER TABLE policy SET (SYSTEM_VERSIONING = OFF);
+      DROP TABLE IF EXISTS payment;
+      DROP TABLE IF EXISTS claim; DROP TABLE IF EXISTS claim_history;
+      DROP TABLE IF EXISTS policy; DROP TABLE IF EXISTS policy_history;
+      DROP TABLE IF EXISTS quotation;
+      DROP TABLE IF EXISTS vehicle;
+      DROP TABLE IF EXISTS customer;
+    </rollback>
+  </changeSet>
+
+  <changeSet id="V003-doc-counter" author="rattaroj.nit">
+    <sqlFile path="./scripts/V003__doc_counter.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      DROP TABLE IF EXISTS document_counter;
+    </rollback>
+  </changeSet>
+
+  <changeSet id="V004-vehicle-master" author="rattaroj.nit">
+    <sqlFile path="./scripts/V004__vehicle_master.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      DELETE FROM vehicle_model_year;
+      DELETE FROM vehicle_submodel;
+      DELETE FROM vehicle_model;
+      DELETE FROM vehicle_brand;
+    </rollback>
+  </changeSet>
+</databaseChangeLog>
