@@ -109,7 +109,7 @@ public class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, AuthResu
 
         var hash = _tokens.HashRefreshToken(req.RawToken);
         var stored = await _db.RefreshTokens.FirstOrDefaultAsync(t => t.TokenHash == hash, ct);
-        if (stored is null || !stored.IsActive(_clock.UtcNow))
+        if (stored is null || !stored.IsUsable(_clock.UtcNow))
             throw new UnauthorizedException("Invalid or expired refresh token.");
 
         var user = await AuthQuery.LoadWithRoles(_db).FirstOrDefaultAsync(u => u.Id == stored.UserId, ct);

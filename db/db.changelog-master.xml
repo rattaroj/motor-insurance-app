@@ -76,4 +76,25 @@
       UPDATE claim_status SET is_terminal = 1 WHERE code IN ('Rejected', 'Closed');
     </rollback>
   </changeSet>
+
+  <changeSet id="V008-audit-columns" author="rattaroj.nit">
+    <sqlFile path="./scripts/V008__audit_columns.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      ALTER TABLE refresh_token DROP CONSTRAINT df_refresh_token_active;
+      ALTER TABLE refresh_token DROP COLUMN created_user, updated_user, updated_at, is_active;
+      ALTER TABLE app_user DROP COLUMN created_user, updated_user, updated_at;
+      ALTER TABLE payment DROP CONSTRAINT df_payment_active;
+      ALTER TABLE payment DROP COLUMN created_user, updated_user, updated_at, is_active;
+      ALTER TABLE claim DROP CONSTRAINT df_claim_active;
+      ALTER TABLE claim DROP COLUMN created_user, updated_user, updated_at, is_active;
+      ALTER TABLE policy DROP CONSTRAINT df_policy_active;
+      ALTER TABLE policy DROP COLUMN created_user, updated_user, updated_at, is_active;
+      ALTER TABLE quotation DROP CONSTRAINT df_quotation_active;
+      ALTER TABLE quotation DROP COLUMN created_user, updated_user, updated_at, is_active;
+      ALTER TABLE vehicle DROP CONSTRAINT df_vehicle_active;
+      ALTER TABLE vehicle DROP COLUMN created_user, updated_user, updated_at, is_active;
+      ALTER TABLE customer DROP CONSTRAINT df_customer_active;
+      ALTER TABLE customer DROP COLUMN created_user, updated_user, updated_at, is_active;
+    </rollback>
+  </changeSet>
 </databaseChangeLog>

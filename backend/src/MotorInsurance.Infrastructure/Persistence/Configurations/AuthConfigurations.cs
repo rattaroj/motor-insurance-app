@@ -15,7 +15,6 @@ public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
         b.Property(x => x.Email).HasColumnName("email").HasMaxLength(255).IsRequired();
         b.Property(x => x.PasswordHash).HasColumnName("password_hash").HasMaxLength(400).IsRequired();
         b.Property(x => x.FullName).HasColumnName("full_name").HasMaxLength(200).IsRequired();
-        b.Property(x => x.IsActive).HasColumnName("is_active");
         b.Property(x => x.CreatedAt).HasColumnName("created_at");
         b.Property(x => x.LastLoginAt).HasColumnName("last_login_at");
         b.HasIndex(x => x.Username).IsUnique();

@@ -1,13 +1,24 @@
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Application.Common.Interfaces;
+using MotorInsurance.Domain.Common;
 using MotorInsurance.Domain.Entities;
 
 namespace MotorInsurance.Infrastructure.Persistence;
 
 public class AppDbContext : DbContext, IAppDbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    private readonly ICurrentUser _currentUser;
+    private readonly IDateTimeProvider _clock;
+
+    public AppDbContext(
+        DbContextOptions<AppDbContext> options,
+        ICurrentUser currentUser,
+        IDateTimeProvider clock) : base(options)
+    {
+        _currentUser = currentUser;
+        _clock = clock;
+    }
 
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
@@ -29,6 +40,59 @@ public class AppDbContext : DbContext, IAppDbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // Map the shared BaseEntity audit columns (snake_case) on every entity that has them,
+        // so we don't repeat these four lines in each IEntityTypeConfiguration. CreatedAt is
+        // already mapped per-config; the rest are uniform across all audited tables.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (!typeof(BaseEntity).IsAssignableFrom(entityType.ClrType)) continue;
+
+            var b = modelBuilder.Entity(entityType.ClrType);
+            b.Property(nameof(BaseEntity.CreatedUser)).HasColumnName("created_user").HasMaxLength(100);
+            b.Property(nameof(BaseEntity.UpdatedUser)).HasColumnName("updated_user").HasMaxLength(100);
+            b.Property(nameof(BaseEntity.UpdatedAt)).HasColumnName("updated_at");
+            b.Property(nameof(BaseEntity.IsActive)).HasColumnName("is_active");
+        }
+
         base.OnModelCreating(modelBuilder);
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        ApplyAuditInfo();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    public override int SaveChanges()
+    {
+        ApplyAuditInfo();
+        return base.SaveChanges();
+    }
+
+    /// <summary>
+    /// Stamps audit columns on every tracked <see cref="BaseEntity"/>: CreatedUser/CreatedAt
+    /// on insert, UpdatedUser/UpdatedAt on update. User is the current username (null for
+    /// non-request work such as data seeding). IsActive is left to the entity/DB default.
+    /// </summary>
+    private void ApplyAuditInfo()
+    {
+        var now = _clock.UtcNow;
+        var user = _currentUser.Username;
+
+        foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+        {
+            switch (entry.State)
+            {
+                case EntityState.Added:
+                    entry.Entity.CreatedAt = now;
+                    entry.Entity.CreatedUser = user;
+                    break;
+                case EntityState.Modified:
+                    entry.Entity.UpdatedAt = now;
+                    entry.Entity.UpdatedUser = user;
+                    break;
+            }
+        }
     }
 }

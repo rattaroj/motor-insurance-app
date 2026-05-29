@@ -8,7 +8,6 @@ public class AppUser : BaseEntity
     public string Email { get; set; } = default!;
     public string PasswordHash { get; set; } = default!;
     public string FullName { get; set; } = default!;
-    public bool IsActive { get; set; } = true;
     public DateTime? LastLoginAt { get; set; }
 
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
@@ -58,5 +57,7 @@ public class RefreshToken : BaseEntity
     public string? ReplacedByHash { get; set; }
     public AppUser User { get; set; } = default!;
 
-    public bool IsActive(DateTime utcNow) => RevokedAt is null && ExpiresAt > utcNow;
+    // Renamed from IsActive to avoid colliding with the inherited BaseEntity.IsActive flag.
+    // This is the token's *usability* check (not revoked and not expired).
+    public bool IsUsable(DateTime utcNow) => RevokedAt is null && ExpiresAt > utcNow;
 }
