@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using MotorInsurance.Api.Authorization;
 using MotorInsurance.Application.Auth.Commands;
 using MotorInsurance.Application.Auth.Queries;
-using MotorInsurance.Application.Claims.Commands;
-using MotorInsurance.Application.Claims.Queries;
 using MotorInsurance.Application.Common.Authorization;
 using MotorInsurance.Application.Customers.Commands;
 using MotorInsurance.Application.Customers.Queries;
@@ -280,53 +278,7 @@ public class RenewalsController : ApiControllerBase
     }
 }
 
-// ---------- Claims ----------
-public record FileClaimRequest(long PolicyId, DateOnly IncidentDate, string? Description, decimal ClaimedAmount);
-public record AdvanceClaimRequest(ClaimStatus To);
-public record ApproveClaimRequest(decimal ApprovedAmount);
-public record RejectClaimRequest(string Reason);
-
-public class ClaimsController : ApiControllerBase
-{
-    [RequirePermission(Permissions.ClaimRead)]
-    [HttpGet]
-    public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20,
-        [FromQuery] string? search = null, [FromQuery] string? status = null,
-        [FromQuery] long? policyId = null, CancellationToken ct = default)
-        => Ok(await Mediator.Send(new GetClaimsQuery(page, pageSize, search, status, policyId), ct));
-
-    [RequirePermission(Permissions.ClaimFile)]
-    [HttpPost]
-    public async Task<IActionResult> File([FromBody] FileClaimRequest r, CancellationToken ct)
-    {
-        var id = await Mediator.Send(new FileClaimCommand(r.PolicyId, r.IncidentDate, r.Description, r.ClaimedAmount), ct);
-        return Created($"/api/claims/{id}", new { id });
-    }
-
-    [RequirePermission(Permissions.ClaimReview)]
-    [HttpPost("{id:long}/advance")]
-    public async Task<IActionResult> Advance(long id, [FromBody] AdvanceClaimRequest r, CancellationToken ct)
-    {
-        await Mediator.Send(new AdvanceClaimCommand(id, r.To), ct);
-        return NoContent();
-    }
-
-    [RequirePermission(Permissions.ClaimApprove)]
-    [HttpPost("{id:long}/approve")]
-    public async Task<IActionResult> Approve(long id, [FromBody] ApproveClaimRequest r, CancellationToken ct)
-    {
-        await Mediator.Send(new ApproveClaimCommand(id, r.ApprovedAmount), ct);
-        return NoContent();
-    }
-
-    [RequirePermission(Permissions.ClaimReject)]
-    [HttpPost("{id:long}/reject")]
-    public async Task<IActionResult> Reject(long id, [FromBody] RejectClaimRequest r, CancellationToken ct)
-    {
-        await Mediator.Send(new RejectClaimCommand(id, r.Reason), ct);
-        return NoContent();
-    }
-}
+// Claims moved to FastEndpoints (REPR) — see Api/Endpoints/Claims/.
 
 // ---------- Payments ----------
 public record SettlePaymentRequest(string ReferenceNo);
