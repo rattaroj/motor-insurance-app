@@ -66,4 +66,14 @@
       ALTER TABLE vehicle_submodel DROP COLUMN powertrain;
     </rollback>
   </changeSet>
+
+  <changeSet id="V007-drop-status-is-terminal" author="rattaroj.nit">
+    <sqlFile path="./scripts/V007__drop_status_is_terminal.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      ALTER TABLE policy_status ADD is_terminal BIT NOT NULL CONSTRAINT df_ps_term DEFAULT (0);
+      UPDATE policy_status SET is_terminal = 1 WHERE code IN ('Cancelled', 'Expired');
+      ALTER TABLE claim_status ADD is_terminal BIT NOT NULL CONSTRAINT df_cs_term DEFAULT (0);
+      UPDATE claim_status SET is_terminal = 1 WHERE code IN ('Rejected', 'Closed');
+    </rollback>
+  </changeSet>
 </databaseChangeLog>
