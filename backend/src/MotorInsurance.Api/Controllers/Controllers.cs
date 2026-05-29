@@ -12,8 +12,6 @@ using MotorInsurance.Application.Customers.Queries;
 using MotorInsurance.Application.Dashboard.Queries;
 using MotorInsurance.Application.Payments.Commands;
 using MotorInsurance.Application.Payments.Queries;
-using MotorInsurance.Application.Policies.Commands;
-using MotorInsurance.Application.Policies.Queries;
 using MotorInsurance.Application.Quotations.Commands;
 using MotorInsurance.Application.Quotations.Queries;
 using MotorInsurance.Application.Renewals.Commands;
@@ -266,52 +264,7 @@ public class QuotationsController : ApiControllerBase
     }
 }
 
-// ---------- Policies ----------
-public record IssuePolicyRequest(long QuotationId, DateOnly EffectiveDate);
-public record CancelPolicyRequest(string Reason);
-
-public class PoliciesController : ApiControllerBase
-{
-    [RequirePermission(Permissions.PolicyRead)]
-    [HttpGet]
-    public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20,
-        [FromQuery] string? status = null, [FromQuery] string? search = null, CancellationToken ct = default)
-        => Ok(await Mediator.Send(new GetPoliciesQuery(page, pageSize, status, search), ct));
-
-    [RequirePermission(Permissions.PolicyRead)]
-    [HttpGet("{id:long}")]
-    public async Task<IActionResult> Get(long id, CancellationToken ct)
-        => Ok(await Mediator.Send(new GetPolicyByIdQuery(id), ct));
-
-    [RequirePermission(Permissions.PolicyRead)]
-    [HttpGet("{id:long}/history")]
-    public async Task<IActionResult> History(long id, CancellationToken ct)
-        => Ok(await Mediator.Send(new GetPolicyHistoryQuery(id), ct));
-
-    [RequirePermission(Permissions.PolicyIssue)]
-    [HttpPost("issue")]
-    public async Task<IActionResult> Issue([FromBody] IssuePolicyRequest r, CancellationToken ct)
-    {
-        var id = await Mediator.Send(new IssuePolicyCommand(r.QuotationId, r.EffectiveDate), ct);
-        return CreatedAtAction(nameof(Get), new { id }, new { id });
-    }
-
-    [RequirePermission(Permissions.PolicyActivate)]
-    [HttpPost("{id:long}/activate")]
-    public async Task<IActionResult> Activate(long id, CancellationToken ct)
-    {
-        await Mediator.Send(new ActivatePolicyCommand(id), ct);
-        return NoContent();
-    }
-
-    [RequirePermission(Permissions.PolicyCancel)]
-    [HttpPost("{id:long}/cancel")]
-    public async Task<IActionResult> Cancel(long id, [FromBody] CancelPolicyRequest r, CancellationToken ct)
-    {
-        await Mediator.Send(new CancelPolicyCommand(id, r.Reason), ct);
-        return NoContent();
-    }
-}
+// Policies moved to FastEndpoints (REPR) — see Api/Endpoints/Policies/.
 
 // ---------- Renewals ----------
 public record RenewRequest(decimal? AdjustedSumInsured);

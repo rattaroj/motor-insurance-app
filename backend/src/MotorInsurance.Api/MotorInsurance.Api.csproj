@@ -6,6 +6,7 @@
     <UserSecretsId>6ed9c355-35ca-4e99-ad1a-b40a8288ddda</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="FastEndpoints" Version="8.1.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
   </ItemGroup>

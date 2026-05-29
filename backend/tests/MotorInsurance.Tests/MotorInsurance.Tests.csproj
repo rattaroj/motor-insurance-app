@@ -14,5 +14,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MotorInsurance.Domain\MotorInsurance.Domain.csproj" />
     <ProjectReference Include="..\..\src\MotorInsurance.Application\MotorInsurance.Application.csproj" />
+    <ProjectReference Include="..\..\src\MotorInsurance.Api\MotorInsurance.Api.csproj" />
   </ItemGroup>
 </Project>

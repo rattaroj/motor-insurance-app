@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using FastEndpoints;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +21,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddFastEndpoints();
 builder.Services
     .AddControllers(options => options.Filters.Add<ApiResponseWrapperFilter>())
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
@@ -111,6 +113,22 @@ if (app.Environment.IsDevelopment())
 app.UseCors(CorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
+
+// FastEndpoints (REPR) — migrated resources live here; MVC controllers serve the rest.
+app.UseFastEndpoints(c =>
+{
+    c.Endpoints.RoutePrefix = "api";                 // endpoints declare "policies/..." -> /api/policies/...
+    c.Serializer.Options.Converters.Add(new JsonStringEnumConverter());
+    // Reuse the uniform error envelope so the frontend handles FE + MVC errors identically.
+    c.Errors.ResponseBuilder = (failures, ctx, _) =>
+    {
+        var errors = failures
+            .GroupBy(f => f.PropertyName)
+            .ToDictionary(g => g.Key, g => g.Select(f => f.ErrorMessage).ToArray());
+        return ApiResponse.Fail("Validation failed", errors, ctx.TraceIdentifier);
+    };
+});
+
 app.MapControllers();
 
 // Seed demo users (idempotent). Tolerates a not-yet-migrated DB so the app still starts.

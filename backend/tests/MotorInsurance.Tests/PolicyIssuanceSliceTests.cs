@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using MotorInsurance.Api.Endpoints.Policies;
 using MotorInsurance.Application.Common.Interfaces;
-using MotorInsurance.Application.Policies.Commands;
 using MotorInsurance.Application.Quotations.Commands;
 using MotorInsurance.Domain.Entities;
 using MotorInsurance.Domain.Enums;
@@ -76,8 +76,8 @@ public class PolicyIssuanceSliceTests
         var quoteId = await new CreateQuotationHandler(db, docNo, clock)
             .Handle(new CreateQuotationCommand(1, 1, CoverageType.Type1, 500_000m), default);
 
-        var policyId = await new IssuePolicyHandler(db, docNo, clock)
-            .Handle(new IssuePolicyCommand(quoteId, new DateOnly(2026, 6, 1)), default);
+        var policyId = await new IssuePolicyEndpoint(db, docNo, clock)
+            .IssueAsync(new IssuePolicyRequest(quoteId, new DateOnly(2026, 6, 1)), default);
 
         var policy = await db.Policies.FindAsync(policyId);
         Assert.NotNull(policy);
