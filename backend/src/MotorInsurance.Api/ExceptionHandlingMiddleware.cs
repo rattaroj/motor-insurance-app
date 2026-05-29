@@ -28,6 +28,7 @@ public class ExceptionHandlingMiddleware
         var (status, message, errors) = ex switch
         {
             ValidationException v => (400, "Validation failed", (IReadOnlyDictionary<string, string[]>?)v.Errors),
+            UnauthorizedException => (401, ex.Message, null),
             NotFoundException => (404, ex.Message, null),
             ConflictException => (409, ex.Message, null),
             InvalidStateTransitionException => (409, ex.Message, null),

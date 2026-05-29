@@ -44,4 +44,16 @@
       DELETE FROM vehicle_brand;
     </rollback>
   </changeSet>
+
+  <changeSet id="V005-auth" author="rattaroj.nit">
+    <sqlFile path="./scripts/V005__auth.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      DROP TABLE IF EXISTS refresh_token;
+      DROP TABLE IF EXISTS user_role;
+      DROP TABLE IF EXISTS role_permission;
+      DROP TABLE IF EXISTS permission;
+      DROP TABLE IF EXISTS role;
+      DROP TABLE IF EXISTS app_user;
+    </rollback>
+  </changeSet>
 </databaseChangeLog>

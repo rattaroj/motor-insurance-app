@@ -18,6 +18,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Can } from '@/components/can';
+import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDateTime } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
 
@@ -140,16 +142,18 @@ export default function PaymentsPage() {
             className: 'text-right',
             cell: (p) =>
               p.status === 'Pending' ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setSettleFor(p);
-                    setReferenceNo('');
-                  }}
-                >
-                  <Wallet /> ชำระ
-                </Button>
+                <Can permission={P.PaymentSettle}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setSettleFor(p);
+                      setReferenceNo('');
+                    }}
+                  >
+                    <Wallet /> ชำระ
+                  </Button>
+                </Can>
               ) : null,
           },
         ]}

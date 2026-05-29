@@ -26,6 +26,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Can } from '@/components/can';
+import { P } from '@/lib/auth/permissions';
 import { apiError } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
 
@@ -81,9 +83,11 @@ export default function VehiclesPage() {
           <h1 className="text-2xl font-semibold tracking-tight">รถยนต์</h1>
           <p className="text-sm text-muted-foreground">ทะเบียนรถที่เอาประกัน</p>
         </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus /> เพิ่มรถยนต์
-        </Button>
+        <Can permission={P.VehicleWrite}>
+          <Button onClick={() => setOpen(true)}>
+            <Plus /> เพิ่มรถยนต์
+          </Button>
+        </Can>
       </div>
 
       <DataTable<VehicleDto>

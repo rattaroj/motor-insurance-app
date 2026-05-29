@@ -1,13 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Menu } from 'lucide-react';
 import { SidebarNav } from '@/components/app-sidebar';
+import { UserMenu } from '@/components/user-menu';
 import { cn } from '@/lib/utils';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false); // desktop: icon rail
   const [mobileOpen, setMobileOpen] = useState(false); // mobile: drawer
+
+  // The login page has no app chrome (sidebar/header).
+  if (pathname === '/login') return <>{children}</>;
 
   const toggle = () => {
     if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
@@ -57,6 +63,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Menu className="h-5 w-5" />
           </button>
           <span className="font-semibold">ระบบประกันรถยนต์</span>
+          <div className="ml-auto">
+            <UserMenu />
+          </div>
         </header>
         <main className="flex-1 overflow-x-hidden">
           <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</div>

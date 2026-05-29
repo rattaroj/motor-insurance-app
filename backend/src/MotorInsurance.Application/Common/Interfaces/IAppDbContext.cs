@@ -20,13 +20,22 @@ public interface IAppDbContext
     DbSet<Policy> Policies { get; }
     DbSet<Claim> Claims { get; }
     DbSet<Payment> Payments { get; }
+    DbSet<AppUser> Users { get; }
+    DbSet<Role> Roles { get; }
+    DbSet<Permission> Permissions { get; }
+    DbSet<UserRole> UserRoles { get; }
+    DbSet<RolePermission> RolePermissions { get; }
+    DbSet<RefreshToken> RefreshTokens { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
 
 public interface ICurrentUser
 {
-    string UserId { get; }
+    long? UserId { get; }
+    string? Username { get; }
+    bool IsAuthenticated { get; }
+    IReadOnlyCollection<string> Permissions { get; }
 }
 
 public interface IDateTimeProvider

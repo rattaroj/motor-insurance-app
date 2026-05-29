@@ -31,6 +31,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Can } from '@/components/can';
+import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDate, fmtDateTime } from '@/lib/utils';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -68,7 +71,7 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
     }
   };
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">กำลังโหลด…</p>;
+  if (isLoading) return <PolicyDetailSkeleton />;
   if (!policy) return <p className="text-sm text-destructive">ไม่พบกรมธรรม์</p>;
 
   return (
@@ -88,29 +91,35 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            disabled={activating || policy.status !== 'Issued'}
-            onClick={() => run(() => activate(policyId).unwrap(), 'เปิดใช้งานกรมธรรม์แล้ว')}
-          >
-            <CheckCircle /> เปิดใช้งาน
-          </Button>
-          <Button
-            variant="outline"
-            disabled={renewing || policy.status !== 'Active'}
-            onClick={() => run(() => renew({ policyId }).unwrap(), 'สร้างกรมธรรม์ต่ออายุแล้ว')}
-          >
-            <RefreshCw /> ต่ออายุ
-          </Button>
-          <Button
-            variant="destructive"
-            disabled={cancelling || !['Issued', 'Active'].includes(policy.status)}
-            onClick={() => {
-              setReason('');
-              setCancelOpen(true);
-            }}
-          >
-            <XCircle /> ยกเลิก
-          </Button>
+          <Can permission={P.PolicyActivate}>
+            <Button
+              disabled={activating || policy.status !== 'Issued'}
+              onClick={() => run(() => activate(policyId).unwrap(), 'เปิดใช้งานกรมธรรม์แล้ว')}
+            >
+              <CheckCircle /> เปิดใช้งาน
+            </Button>
+          </Can>
+          <Can permission={P.PolicyRenew}>
+            <Button
+              variant="outline"
+              disabled={renewing || policy.status !== 'Active'}
+              onClick={() => run(() => renew({ policyId }).unwrap(), 'สร้างกรมธรรม์ต่ออายุแล้ว')}
+            >
+              <RefreshCw /> ต่ออายุ
+            </Button>
+          </Can>
+          <Can permission={P.PolicyCancel}>
+            <Button
+              variant="destructive"
+              disabled={cancelling || !['Issued', 'Active'].includes(policy.status)}
+              onClick={() => {
+                setReason('');
+                setCancelOpen(true);
+              }}
+            >
+              <XCircle /> ยกเลิก
+            </Button>
+          </Can>
         </div>
       </div>
 
@@ -157,16 +166,18 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
                   <TableCell className="text-right tabular-nums">{fmtBaht(p.amount)}</TableCell>
                   <TableCell className="text-right">
                     {p.status === 'Pending' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSettleFor(p.id);
-                          setReferenceNo('');
-                        }}
-                      >
-                        <Wallet /> ชำระ
-                      </Button>
+                      <Can permission={P.PaymentSettle}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSettleFor(p.id);
+                            setReferenceNo('');
+                          }}
+                        >
+                          <Wallet /> ชำระ
+                        </Button>
+                      </Can>
                     )}
                   </TableCell>
                 </TableRow>
@@ -187,9 +198,11 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">เคลม</CardTitle>
-          <Button size="sm" variant="outline" onClick={() => setClaimOpen(true)} disabled={policy.status !== 'Active'}>
-            <Plus /> แจ้งเคลม
-          </Button>
+          <Can permission={P.ClaimFile}>
+            <Button size="sm" variant="outline" onClick={() => setClaimOpen(true)} disabled={policy.status !== 'Active'}>
+              <Plus /> แจ้งเคลม
+            </Button>
+          </Can>
         </CardHeader>
         <CardContent className="pt-0">
           <Table>
@@ -371,6 +384,54 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** Placeholder shown while the policy detail is loading — mirrors the real layout. */
+function PolicyDetailSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-4 w-16" />
+
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+          </div>
+          <Skeleton className="h-4 w-56" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-9 w-28" />
+          <Skeleton className="h-9 w-24" />
+          <Skeleton className="h-9 w-24" />
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i}>
+            <CardContent className="space-y-2 p-4">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-5 w-24" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {Array.from({ length: 2 }).map((_, i) => (
+        <Card key={i}>
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+          </CardHeader>
+          <CardContent className="space-y-3 pt-0">
+            {Array.from({ length: 3 }).map((_, r) => (
+              <Skeleton key={r} className="h-4 w-full" />
+            ))}
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }

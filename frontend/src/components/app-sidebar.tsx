@@ -14,22 +14,25 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { P, usePermissions } from '@/lib/auth/permissions';
 
-type NavItem = { href: string; label: string; icon: LucideIcon };
+type NavItem = { href: string; label: string; icon: LucideIcon; permission: string };
 
 const nav: NavItem[] = [
-  { href: '/', label: 'แดชบอร์ด', icon: LayoutDashboard },
-  { href: '/customers', label: 'ลูกค้า', icon: Users },
-  { href: '/vehicles', label: 'รถยนต์', icon: Car },
-  { href: '/quotations', label: 'ใบเสนอราคา', icon: FileText },
-  { href: '/policies', label: 'กรมธรรม์', icon: ShieldCheck },
-  { href: '/claims', label: 'เคลม', icon: FileWarning },
-  { href: '/payments', label: 'การชำระเงิน', icon: CreditCard },
-  { href: '/master', label: 'ข้อมูลหลักรถยนต์', icon: Database },
+  { href: '/', label: 'แดชบอร์ด', icon: LayoutDashboard, permission: P.DashboardRead },
+  { href: '/customers', label: 'ลูกค้า', icon: Users, permission: P.CustomerRead },
+  { href: '/vehicles', label: 'รถยนต์', icon: Car, permission: P.VehicleRead },
+  { href: '/quotations', label: 'ใบเสนอราคา', icon: FileText, permission: P.QuotationRead },
+  { href: '/policies', label: 'กรมธรรม์', icon: ShieldCheck, permission: P.PolicyRead },
+  { href: '/claims', label: 'เคลม', icon: FileWarning, permission: P.ClaimRead },
+  { href: '/payments', label: 'การชำระเงิน', icon: CreditCard, permission: P.PaymentRead },
+  { href: '/master', label: 'ข้อมูลหลักรถยนต์', icon: Database, permission: P.LookupManage },
 ];
 
 export function SidebarNav({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
+  const permissions = usePermissions();
+  const items = nav.filter((item) => permissions.includes(item.permission));
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 
   return (
@@ -50,7 +53,7 @@ export function SidebarNav({ collapsed = false, onNavigate }: { collapsed?: bool
       </div>
 
       <nav className={cn('flex-1 space-y-1 py-2', collapsed ? 'px-2' : 'px-3')}>
-        {nav.map(({ href, label, icon: Icon }) => (
+        {items.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}

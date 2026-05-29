@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Can } from '@/components/can';
+import { P } from '@/lib/auth/permissions';
 import { apiError } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
 
@@ -54,9 +56,11 @@ export default function CustomersPage() {
           <h1 className="text-2xl font-semibold tracking-tight">ลูกค้า</h1>
           <p className="text-sm text-muted-foreground">จัดการข้อมูลผู้เอาประกัน</p>
         </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus /> เพิ่มลูกค้า
-        </Button>
+        <Can permission={P.CustomerWrite}>
+          <Button onClick={() => setOpen(true)}>
+            <Plus /> เพิ่มลูกค้า
+          </Button>
+        </Can>
       </div>
 
       <DataTable<CustomerDto>

@@ -19,6 +19,12 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Policy> Policies => Set<Policy>();
     public DbSet<Claim> Claims => Set<Claim>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<AppUser> Users => Set<AppUser>();
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

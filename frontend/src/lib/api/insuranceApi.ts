@@ -5,6 +5,8 @@ import {
   type FetchArgs,
   type FetchBaseQueryError,
 } from '@reduxjs/toolkit/query/react';
+import { setCredentials, clearCredentials, type AuthResponse, type UserProfile } from '../auth/authSlice';
+import type { RootState } from '../store/store';
 
 export type PolicyStatus = 'Draft' | 'Quoted' | 'Issued' | 'Active' | 'Cancelled' | 'Expired';
 export type ClaimStatus = 'Filed' | 'UnderReview' | 'Assessment' | 'Approved' | 'Rejected' | 'Paid' | 'Closed';
@@ -139,18 +141,48 @@ const qs = (params: Record<string, string | number | undefined | null>) => {
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl,
-  prepareHeaders: (headers) => {
-    headers.set('X-User-Id', 'demo.user');
+  credentials: 'include', // send/receive the httpOnly refresh cookie
+  prepareHeaders: (headers, { getState }) => {
+    const token = (getState() as RootState).auth.accessToken;
+    if (token) headers.set('Authorization', `Bearer ${token}`);
     return headers;
   },
 });
 
 /** Unwraps the global ApiResponse envelope so endpoints see `data` directly. */
-const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (args, store, extra) => {
+const unwrapEnvelope: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (args, store, extra) => {
   const result = await rawBaseQuery(args, store, extra);
   if (result.data && typeof result.data === 'object' && 'success' in result.data) {
     return { ...result, data: (result.data as unknown as { data: unknown }).data };
   }
+  return result;
+};
+
+const isAuthEndpoint = (args: string | FetchArgs) => {
+  const url = typeof args === 'string' ? args : args.url;
+  return url.startsWith('auth/');
+};
+
+// De-dupes concurrent refreshes: the first 401 kicks off /auth/refresh, the rest await it.
+let refreshPromise: ReturnType<typeof unwrapEnvelope> | null = null;
+
+/** On 401, silently refresh the access token (from the cookie) once, then retry. */
+const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (args, store, extra) => {
+  let result = await unwrapEnvelope(args, store, extra);
+
+  if (result.error?.status === 401 && !isAuthEndpoint(args)) {
+    refreshPromise ??= unwrapEnvelope({ url: 'auth/refresh', method: 'POST' }, store, extra);
+    const refresh = await refreshPromise;
+    refreshPromise = null;
+
+    if (refresh.data) {
+      store.dispatch(setCredentials(refresh.data as AuthResponse));
+      result = await unwrapEnvelope(args, store, extra);
+    } else {
+      store.dispatch(clearCredentials());
+    }
+  }
+
   return result;
 };
 
@@ -171,6 +203,20 @@ export const insuranceApi = createApi({
     'VYear',
   ],
   endpoints: (build) => ({
+    // ---------- Auth ----------
+    login: build.mutation<AuthResponse, { username: string; password: string }>({
+      query: (body) => ({ url: 'auth/login', method: 'POST', body }),
+    }),
+    refresh: build.mutation<AuthResponse, void>({
+      query: () => ({ url: 'auth/refresh', method: 'POST' }),
+    }),
+    logout: build.mutation<void, void>({
+      query: () => ({ url: 'auth/logout', method: 'POST' }),
+    }),
+    getMe: build.query<UserProfile, void>({
+      query: () => 'auth/me',
+    }),
+
     // ---------- Customers ----------
     getCustomers: build.query<PagedResult<CustomerDto>, { page?: number; pageSize?: number; search?: string } | void>({
       query: (a) => `customers?${qs({ page: a?.page, pageSize: a?.pageSize, search: a?.search })}`,
@@ -396,6 +442,10 @@ export const insuranceApi = createApi({
 });
 
 export const {
+  useLoginMutation,
+  useRefreshMutation,
+  useLogoutMutation,
+  useGetMeQuery,
   useGetCustomersQuery,
   useCreateCustomerMutation,
   useGetVehiclesQuery,

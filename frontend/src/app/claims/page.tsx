@@ -28,6 +28,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Can } from '@/components/can';
+import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDate } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
 
@@ -97,9 +99,11 @@ export default function ClaimsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">เคลม</h1>
           <p className="text-sm text-muted-foreground">แจ้งเคลม → ตรวจสอบ → ประเมิน → อนุมัติ/ปฏิเสธ</p>
         </div>
-        <Button onClick={() => setFileOpen(true)}>
-          <Plus /> แจ้งเคลม
-        </Button>
+        <Can permission={P.ClaimFile}>
+          <Button onClick={() => setFileOpen(true)}>
+            <Plus /> แจ้งเคลม
+          </Button>
+        </Can>
       </div>
 
       <DataTable<ClaimDto>
@@ -156,35 +160,41 @@ export default function ClaimsPage() {
               return (
                 <div className="flex justify-end gap-2">
                   {adv && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => run(() => advance({ id: c.id, to: adv.to }).unwrap(), 'อัปเดตสถานะแล้ว')}
-                    >
-                      {adv.label} <ChevronRight />
-                    </Button>
+                    <Can permission={P.ClaimReview}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => run(() => advance({ id: c.id, to: adv.to }).unwrap(), 'อัปเดตสถานะแล้ว')}
+                      >
+                        {adv.label} <ChevronRight />
+                      </Button>
+                    </Can>
                   )}
                   {c.status === 'Assessment' && (
                     <>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setApproveFor(c);
-                          setApprovedAmount(String(c.claimedAmount));
-                        }}
-                      >
-                        <Check /> อนุมัติ
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => {
-                          setRejectFor(c);
-                          setReason('');
-                        }}
-                      >
-                        <X /> ปฏิเสธ
-                      </Button>
+                      <Can permission={P.ClaimApprove}>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setApproveFor(c);
+                            setApprovedAmount(String(c.claimedAmount));
+                          }}
+                        >
+                          <Check /> อนุมัติ
+                        </Button>
+                      </Can>
+                      <Can permission={P.ClaimReject}>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            setRejectFor(c);
+                            setReason('');
+                          }}
+                        >
+                          <X /> ปฏิเสธ
+                        </Button>
+                      </Can>
                     </>
                   )}
                   {c.status === 'Approved' && (

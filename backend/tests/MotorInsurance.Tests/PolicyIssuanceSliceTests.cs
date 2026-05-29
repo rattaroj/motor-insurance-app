@@ -26,12 +26,23 @@ public class PolicyIssuanceSliceTests
         public DbSet<Policy> Policies => Set<Policy>();
         public DbSet<Claim> Claims => Set<Claim>();
         public DbSet<Payment> Payments => Set<Payment>();
+        public DbSet<AppUser> Users => Set<AppUser>();
+        public DbSet<Role> Roles => Set<Role>();
+        public DbSet<Permission> Permissions => Set<Permission>();
+        public DbSet<UserRole> UserRoles => Set<UserRole>();
+        public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         protected override void OnModelCreating(ModelBuilder mb)
         {
             // Ignore temporal/rowversion bits that InMemory can't model.
             mb.Entity<Policy>().Ignore(p => p.RowVersion);
             mb.Entity<Claim>().Ignore(c => c.RowVersion);
             mb.Entity<Payment>().Ignore(p => p.RowVersion);
+
+            // Keyless/composite-key auth entities need explicit keys (no IEntityTypeConfiguration here).
+            mb.Entity<Permission>().HasKey(p => p.Code);
+            mb.Entity<UserRole>().HasKey(x => new { x.UserId, x.RoleId });
+            mb.Entity<RolePermission>().HasKey(x => new { x.RoleId, x.PermissionCode });
         }
     }
 

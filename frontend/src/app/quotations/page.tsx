@@ -26,6 +26,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Can } from '@/components/can';
+import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDate } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
 
@@ -96,9 +98,11 @@ export default function QuotationsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">ใบเสนอราคา</h1>
           <p className="text-sm text-muted-foreground">คำนวณเบี้ยและออกกรมธรรม์</p>
         </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus /> สร้างใบเสนอราคา
-        </Button>
+        <Can permission={P.QuotationWrite}>
+          <Button onClick={() => setOpen(true)}>
+            <Plus /> สร้างใบเสนอราคา
+          </Button>
+        </Can>
       </div>
 
       <DataTable<QuotationDto>
@@ -128,16 +132,18 @@ export default function QuotationsPage() {
             header: 'จัดการ',
             className: 'text-right',
             cell: (q) => (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setIssueFor(q);
-                  setEffectiveDate(today());
-                }}
-              >
-                <FileSignature /> ออกกรมธรรม์
-              </Button>
+              <Can permission={P.PolicyIssue}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setIssueFor(q);
+                    setEffectiveDate(today());
+                  }}
+                >
+                  <FileSignature /> ออกกรมธรรม์
+                </Button>
+              </Can>
             ),
           },
         ]}

@@ -1,4 +1,5 @@
 using System.Data;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -124,16 +125,29 @@ public static class DependencyInjection
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddScoped<ICurrentUser, CurrentUser>();
 
+        services.Configure<Services.JwtSettings>(config.GetSection("Jwt"));
+        services.AddSingleton<IPasswordHasher, Services.Pbkdf2PasswordHasher>();
+        services.AddScoped<ITokenService, Services.JwtTokenService>();
+
         return services;
     }
 }
 
+/// <summary>Resolves the current user from the validated JWT claims.</summary>
 public class CurrentUser : ICurrentUser
 {
     private readonly IHttpContextAccessor _ctx;
     public CurrentUser(IHttpContextAccessor ctx) => _ctx = ctx;
-    public string UserId =>
-        _ctx.HttpContext?.User?.Identity?.Name
-        ?? _ctx.HttpContext?.Request.Headers["X-User-Id"].FirstOrDefault()
-        ?? "system";
+
+    private ClaimsPrincipal? Principal => _ctx.HttpContext?.User;
+
+    public long? UserId =>
+        long.TryParse(Principal?.FindFirst("sub")?.Value, out var id) ? id : null;
+
+    public string? Username => Principal?.FindFirst("name")?.Value;
+
+    public bool IsAuthenticated => Principal?.Identity?.IsAuthenticated ?? false;
+
+    public IReadOnlyCollection<string> Permissions =>
+        Principal?.FindAll("perm").Select(c => c.Value).ToArray() ?? Array.Empty<string>();
 }
