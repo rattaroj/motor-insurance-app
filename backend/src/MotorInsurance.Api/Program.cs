@@ -1,14 +1,12 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using FastEndpoints;
+using FastEndpoints.Swagger;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
 using MotorInsurance.Api;
 using MotorInsurance.Api.Authorization;
-using MotorInsurance.Application;
 using MotorInsurance.Application.Common.Interfaces;
 using MotorInsurance.Application.Common.Models;
 using MotorInsurance.Infrastructure;
@@ -18,47 +16,19 @@ using MotorInsurance.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
+
+// FastEndpoints (REPR) hosts every endpoint; NSwag generates the OpenAPI doc + UI.
 builder.Services.AddFastEndpoints();
-builder.Services
-    .AddControllers(options => options.Filters.Add<ApiResponseWrapperFilter>())
-    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
-    .ConfigureApiBehaviorOptions(options =>
-    {
-        // Model-binding/validation 400s use the same envelope shape.
-        options.InvalidModelStateResponseFactory = ctx =>
-        {
-            var errors = ctx.ModelState
-                .Where(kv => kv.Value!.Errors.Count > 0)
-                .ToDictionary(kv => kv.Key, kv => kv.Value!.Errors.Select(e => e.ErrorMessage).ToArray());
-            return new BadRequestObjectResult(
-                ApiResponse.Fail("Validation failed", errors, ctx.HttpContext.TraceIdentifier));
-        };
-    });
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+builder.Services.SwaggerDocument(o =>
 {
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    o.EnableJWTBearerAuth = true;
+    o.DocumentSettings = s =>
     {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "Paste the JWT access token (without the 'Bearer ' prefix).",
-    });
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" },
-            },
-            Array.Empty<string>()
-        },
-    });
+        s.Title = "Motor Insurance API";
+        s.Version = "v1";
+    };
 });
 
 // ----- Authentication (JWT bearer) -----
@@ -104,22 +74,20 @@ var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+// Serve the OpenAPI doc + UI before auth so the global "require authenticated" fallback
+// policy doesn't gate /swagger (dev only).
 if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    app.UseSwaggerGen(); // NSwag: /swagger/v1/swagger.json + UI at /swagger
 
 app.UseCors(CorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 
-// FastEndpoints (REPR) — migrated resources live here; MVC controllers serve the rest.
 app.UseFastEndpoints(c =>
 {
     c.Endpoints.RoutePrefix = "api";                 // endpoints declare "policies/..." -> /api/policies/...
     c.Serializer.Options.Converters.Add(new JsonStringEnumConverter());
-    // Reuse the uniform error envelope so the frontend handles FE + MVC errors identically.
+    // Map FluentValidation failures onto the uniform ApiResponse error envelope.
     c.Errors.ResponseBuilder = (failures, ctx, _) =>
     {
         var errors = failures
@@ -128,8 +96,6 @@ app.UseFastEndpoints(c =>
         return ApiResponse.Fail("Validation failed", errors, ctx.TraceIdentifier);
     };
 });
-
-app.MapControllers();
 
 // Seed demo users (idempotent). Tolerates a not-yet-migrated DB so the app still starts.
 using (var scope = app.Services.CreateScope())
