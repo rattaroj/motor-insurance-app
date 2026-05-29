@@ -20,6 +20,21 @@ export interface CustomerDto {
   email: string | null;
 }
 
+/** Submodel fuel type — mirrors backend Powertrain enum (serialized as its C# name). */
+export type Powertrain = 'Gasoline' | 'Diesel' | 'Electric' | 'Hybrid';
+
+export const POWERTRAIN_LABELS: Record<Powertrain, string> = {
+  Gasoline: 'น้ำมัน',
+  Diesel: 'ดีเซล',
+  Electric: 'ไฟฟ้า',
+  Hybrid: 'ไฮบริด',
+};
+
+export const POWERTRAIN_OPTIONS = (Object.keys(POWERTRAIN_LABELS) as Powertrain[]).map((v) => ({
+  value: v,
+  label: POWERTRAIN_LABELS[v],
+}));
+
 export interface VehicleDto {
   id: number;
   customerId: number;
@@ -30,6 +45,7 @@ export interface VehicleDto {
   brand: string;
   model: string;
   submodel: string;
+  powertrain: Powertrain;
   year: number;
   chassisNo: string | null;
 }
@@ -37,6 +53,12 @@ export interface VehicleDto {
 export interface Option {
   id: number;
   name: string;
+}
+
+export interface SubmodelOption {
+  id: number;
+  name: string;
+  powertrain: Powertrain;
 }
 
 export interface ModelYearOption {
@@ -262,7 +284,7 @@ export const insuranceApi = createApi({
       query: (brandId) => `lookups/vehicle-models?brandId=${brandId}`,
       providesTags: ['VModel'],
     }),
-    getVehicleSubmodels: build.query<Option[], number>({
+    getVehicleSubmodels: build.query<SubmodelOption[], number>({
       query: (modelId) => `lookups/vehicle-submodels?modelId=${modelId}`,
       providesTags: ['VSubmodel'],
     }),
@@ -298,12 +320,16 @@ export const insuranceApi = createApi({
       invalidatesTags: ['VModel'],
     }),
 
-    createSubmodel: build.mutation<{ id: number }, { modelId: number; name: string }>({
+    createSubmodel: build.mutation<{ id: number }, { modelId: number; name: string; powertrain: Powertrain }>({
       query: (body) => ({ url: 'lookups/vehicle-submodels', method: 'POST', body }),
       invalidatesTags: ['VSubmodel', 'Vehicle'],
     }),
-    updateSubmodel: build.mutation<void, { id: number; name: string }>({
-      query: ({ id, name }) => ({ url: `lookups/vehicle-submodels/${id}`, method: 'PUT', body: { name } }),
+    updateSubmodel: build.mutation<void, { id: number; name: string; powertrain: Powertrain }>({
+      query: ({ id, name, powertrain }) => ({
+        url: `lookups/vehicle-submodels/${id}`,
+        method: 'PUT',
+        body: { name, powertrain },
+      }),
       invalidatesTags: ['VSubmodel', 'Vehicle'],
     }),
     deleteSubmodel: build.mutation<void, number>({

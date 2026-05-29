@@ -130,7 +130,8 @@ public class VehiclesController : ApiControllerBase
 // ---------- Vehicle master-data lookups + CRUD (cascading) ----------
 public record NameRequest(string Name);
 public record CreateModelRequest(long BrandId, string Name);
-public record CreateSubmodelRequest(long ModelId, string Name);
+public record CreateSubmodelRequest(long ModelId, string Name, Powertrain Powertrain);
+public record SubmodelRequest(string Name, Powertrain Powertrain);
 public record CreateModelYearRequest(long SubmodelId, int Year);
 public record YearRequest(int Year);
 
@@ -199,13 +200,13 @@ public class LookupsController : ApiControllerBase
     [RequirePermission(Permissions.LookupManage)]
     [HttpPost("vehicle-submodels")]
     public async Task<IActionResult> CreateSubmodel([FromBody] CreateSubmodelRequest r, CancellationToken ct)
-        => Ok(new { id = await Mediator.Send(new CreateSubmodelCommand(r.ModelId, r.Name), ct) });
+        => Ok(new { id = await Mediator.Send(new CreateSubmodelCommand(r.ModelId, r.Name, r.Powertrain), ct) });
 
     [RequirePermission(Permissions.LookupManage)]
     [HttpPut("vehicle-submodels/{id:long}")]
-    public async Task<IActionResult> UpdateSubmodel(long id, [FromBody] NameRequest r, CancellationToken ct)
+    public async Task<IActionResult> UpdateSubmodel(long id, [FromBody] SubmodelRequest r, CancellationToken ct)
     {
-        await Mediator.Send(new UpdateSubmodelCommand(id, r.Name), ct);
+        await Mediator.Send(new UpdateSubmodelCommand(id, r.Name, r.Powertrain), ct);
         return NoContent();
     }
 

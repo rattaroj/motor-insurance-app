@@ -2,12 +2,14 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Application.Common.Interfaces;
 using MotorInsurance.Application.Common.Models;
+using MotorInsurance.Domain.Enums;
 
 namespace MotorInsurance.Application.Vehicles.Queries;
 
 public record VehicleDto(
     long Id, long CustomerId, string CustomerName, string RegistrationNo, string Province,
-    long ModelYearId, string Brand, string Model, string Submodel, int Year, string? ChassisNo);
+    long ModelYearId, string Brand, string Model, string Submodel, Powertrain Powertrain,
+    int Year, string? ChassisNo);
 
 public record GetVehiclesQuery(int Page = 1, int PageSize = 20, string? Search = null, long? CustomerId = null)
     : IRequest<PagedResult<VehicleDto>>;
@@ -48,6 +50,7 @@ public class GetVehiclesHandler : IRequestHandler<GetVehiclesQuery, PagedResult<
                 v.ModelYear.Submodel.Model.Brand.Name,
                 v.ModelYear.Submodel.Model.Name,
                 v.ModelYear.Submodel.Name,
+                v.ModelYear.Submodel.Powertrain,
                 v.ModelYear.Year,
                 v.ChassisNo))
             .ToPagedResultAsync(req.Page, req.PageSize, ct);

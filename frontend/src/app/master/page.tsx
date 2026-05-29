@@ -18,6 +18,9 @@ import {
   useCreateModelYearMutation,
   useUpdateModelYearMutation,
   useDeleteModelYearMutation,
+  POWERTRAIN_LABELS,
+  POWERTRAIN_OPTIONS,
+  type Powertrain,
 } from '@/lib/api/insuranceApi';
 import { MasterColumn, type MasterItem } from '@/components/master-column';
 
@@ -46,6 +49,12 @@ export default function MasterDataPage() {
 
   const toItems = (xs?: { id: number; name: string }[]): MasterItem[] =>
     (xs ?? []).map((x) => ({ id: x.id, label: x.name }));
+  const submodelItems: MasterItem[] = (submodels ?? []).map((s) => ({
+    id: s.id,
+    label: s.name,
+    meta: POWERTRAIN_LABELS[s.powertrain],
+    selectValue: s.powertrain,
+  }));
   const yearItems: MasterItem[] = (years ?? []).map((y) => ({ id: y.id, label: String(y.year) }));
 
   return (
@@ -103,13 +112,14 @@ export default function MasterDataPage() {
         <MasterColumn
           title="รุ่นย่อย"
           fieldLabel="ชื่อรุ่นย่อย"
-          items={toItems(submodels)}
+          items={submodelItems}
           selectedId={submodelId}
           disabled={!modelId}
           disabledHint="เลือกรุ่นก่อน"
+          selectField={{ label: 'ประเภทพลังงาน', options: POWERTRAIN_OPTIONS }}
           onSelect={(id) => setSubmodelId(id)}
-          onAdd={(v) => createSubmodel({ modelId: modelId!, name: v }).unwrap()}
-          onEdit={(id, v) => updateSubmodel({ id, name: v }).unwrap()}
+          onAdd={(v, pt) => createSubmodel({ modelId: modelId!, name: v, powertrain: pt as Powertrain }).unwrap()}
+          onEdit={(id, v, pt) => updateSubmodel({ id, name: v, powertrain: pt as Powertrain }).unwrap()}
           onDelete={async (id) => {
             await deleteSubmodel(id).unwrap();
             if (submodelId === id) setSubmodelId(null);

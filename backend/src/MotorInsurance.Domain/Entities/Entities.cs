@@ -45,6 +45,7 @@ public class VehicleSubmodel
     public long Id { get; set; }
     public long ModelId { get; set; }
     public string Name { get; set; } = default!;
+    public Powertrain Powertrain { get; set; }
     public VehicleModel Model { get; set; } = default!;
     public ICollection<VehicleModelYear> ModelYears { get; set; } = new List<VehicleModelYear>();
 }

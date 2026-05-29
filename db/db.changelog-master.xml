@@ -56,4 +56,14 @@
       DROP TABLE IF EXISTS app_user;
     </rollback>
   </changeSet>
+
+  <changeSet id="V006-submodel-powertrain" author="rattaroj.nit">
+    <!-- splitStatements="true": the backfill UPDATEs reference the just-added column,
+         which must be in its own batch for SQL Server's deferred name resolution. -->
+    <sqlFile path="./scripts/V006__submodel_powertrain.sql" relativeToChangelogFile="true" splitStatements="true"/>
+    <rollback>
+      ALTER TABLE vehicle_submodel DROP CONSTRAINT ck_vehicle_submodel_powertrain;
+      ALTER TABLE vehicle_submodel DROP COLUMN powertrain;
+    </rollback>
+  </changeSet>
 </databaseChangeLog>

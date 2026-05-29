@@ -77,6 +77,8 @@ public class VehicleSubmodelConfiguration : IEntityTypeConfiguration<VehicleSubm
         b.Property(x => x.Id).HasColumnName("id");
         b.Property(x => x.ModelId).HasColumnName("model_id");
         b.Property(x => x.Name).HasColumnName("name").HasMaxLength(50).IsRequired();
+        b.Property(x => x.Powertrain).HasColumnName("powertrain");
+        PowertrainConverter.Apply(b.Property(x => x.Powertrain));
         b.HasIndex(x => new { x.ModelId, x.Name }).IsUnique();
         b.HasOne(x => x.Model).WithMany(m => m.Submodels)
             .HasForeignKey(x => x.ModelId).OnDelete(DeleteBehavior.Cascade);
@@ -121,6 +123,30 @@ internal static class CoverageConverter
         "TYPE3PLUS" => CoverageType.Type3Plus,
         "TYPE3"     => CoverageType.Type3,
         _ => CoverageType.Type1
+    };
+}
+
+internal static class PowertrainConverter
+{
+    public static void Apply(PropertyBuilder<Powertrain> b) =>
+        b.HasConversion(v => ToDb(v), v => FromDb(v)).HasMaxLength(20);
+
+    private static string ToDb(Powertrain v) => v switch
+    {
+        Powertrain.Gasoline => "GASOLINE",
+        Powertrain.Diesel   => "DIESEL",
+        Powertrain.Electric => "ELECTRIC",
+        Powertrain.Hybrid   => "HYBRID",
+        _ => "GASOLINE"
+    };
+
+    private static Powertrain FromDb(string v) => v switch
+    {
+        "GASOLINE" => Powertrain.Gasoline,
+        "DIESEL"   => Powertrain.Diesel,
+        "ELECTRIC" => Powertrain.Electric,
+        "HYBRID"   => Powertrain.Hybrid,
+        _ => Powertrain.Gasoline
     };
 }
 

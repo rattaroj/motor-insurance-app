@@ -11,6 +11,7 @@ import {
   useGetVehicleModelsQuery,
   useGetVehicleSubmodelsQuery,
   useGetVehicleModelYearsQuery,
+  POWERTRAIN_LABELS,
   type VehicleDto,
 } from '@/lib/api/insuranceApi';
 import { Button } from '@/components/ui/button';
@@ -111,6 +112,7 @@ export default function VehiclesPage() {
           { header: 'ยี่ห้อ', cell: (v) => v.brand },
           { header: 'รุ่น', cell: (v) => v.model },
           { header: 'รุ่นย่อย', cell: (v) => v.submodel },
+          { header: 'พลังงาน', cell: (v) => POWERTRAIN_LABELS[v.powertrain] },
           { header: 'ปี', cell: (v) => <span className="tabular-nums">{v.year}</span> },
           { header: 'เจ้าของ', cell: (v) => v.customerName },
         ]}
@@ -204,7 +206,7 @@ export default function VehiclesPage() {
                   <SelectContent>
                     {submodels?.map((s) => (
                       <SelectItem key={s.id} value={String(s.id)}>
-                        {s.name}
+                        {s.name} · {POWERTRAIN_LABELS[s.powertrain]}
                       </SelectItem>
                     ))}
                   </SelectContent>

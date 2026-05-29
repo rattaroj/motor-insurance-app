@@ -15,23 +15,38 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn, apiError } from '@/lib/utils';
 
-export type MasterItem = { id: number; label: string };
+export type MasterItem = {
+  id: number;
+  label: string;
+  /** Optional muted badge shown after the label (e.g. powertrain). */
+  meta?: string;
+  /** Current value for `selectField`, used to prefill the edit dialog. */
+  selectValue?: string;
+};
+
+/** Optional extra dropdown rendered in the add/edit dialogs (e.g. powertrain on a submodel). */
+export interface SelectField {
+  label: string;
+  options: { value: string; label: string }[];
+}
 
 interface Props {
   title: string;
   items: MasterItem[] | undefined;
   selectedId: number | null;
   onSelect: (id: number) => void;
-  onAdd: (value: string) => Promise<unknown>;
-  onEdit: (id: number, value: string) => Promise<unknown>;
+  onAdd: (value: string, selectValue?: string) => Promise<unknown>;
+  onEdit: (id: number, value: string, selectValue?: string) => Promise<unknown>;
   onDelete: (id: number) => Promise<unknown>;
   fieldLabel: string;
   inputType?: 'text' | 'number';
   disabled?: boolean;
   disabledHint?: string;
   selectable?: boolean;
+  selectField?: SelectField;
 }
 
 export function MasterColumn({
@@ -47,12 +62,17 @@ export function MasterColumn({
   disabled = false,
   disabledHint = 'เลือกรายการทางซ้ายก่อน',
   selectable = true,
+  selectField,
 }: Props) {
   const [addOpen, setAddOpen] = useState(false);
   const [value, setValue] = useState('');
+  const [selectValue, setSelectValue] = useState('');
   const [editItem, setEditItem] = useState<MasterItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<MasterItem | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Save is blocked until the optional select has a value (when the column uses one).
+  const selectMissing = !!selectField && !selectValue;
 
   const run = async (fn: () => Promise<unknown>, ok: string, done: () => void) => {
     setBusy(true);
@@ -77,6 +97,7 @@ export function MasterColumn({
           disabled={disabled}
           onClick={() => {
             setValue('');
+            setSelectValue(selectField?.options[0]?.value ?? '');
             setAddOpen(true);
           }}
         >
@@ -97,11 +118,15 @@ export function MasterColumn({
               onClick={() => selectable && onSelect(it.id)}
             >
               <span className="flex-1 truncate">{it.label}</span>
+              {it.meta && (
+                <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{it.meta}</span>
+              )}
               <button
                 className="invisible rounded p-1 text-muted-foreground hover:text-foreground group-hover:visible"
                 onClick={(e) => {
                   e.stopPropagation();
                   setValue(it.label);
+                  setSelectValue(it.selectValue ?? selectField?.options[0]?.value ?? '');
                   setEditItem(it);
                 }}
                 aria-label="แก้ไข"
@@ -132,17 +157,36 @@ export function MasterColumn({
           <DialogHeader>
             <DialogTitle>เพิ่ม{title}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="add-val" required>{fieldLabel}</Label>
-            <Input id="add-val" type={inputType} value={value} onChange={(e) => setValue(e.target.value)} />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="add-val" required>{fieldLabel}</Label>
+              <Input id="add-val" type={inputType} value={value} onChange={(e) => setValue(e.target.value)} />
+            </div>
+            {selectField && (
+              <div className="space-y-2">
+                <Label required>{selectField.label}</Label>
+                <Select value={selectValue} onValueChange={setSelectValue}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectField.options.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>
               ยกเลิก
             </Button>
             <Button
-              disabled={busy || !value}
-              onClick={() => run(() => onAdd(value), 'เพิ่มแล้ว', () => setAddOpen(false))}
+              disabled={busy || !value || selectMissing}
+              onClick={() => run(() => onAdd(value, selectValue || undefined), 'เพิ่มแล้ว', () => setAddOpen(false))}
             >
               บันทึก
             </Button>
@@ -156,19 +200,38 @@ export function MasterColumn({
           <DialogHeader>
             <DialogTitle>แก้ไข{title}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="edit-val" required>{fieldLabel}</Label>
-            <Input id="edit-val" type={inputType} value={value} onChange={(e) => setValue(e.target.value)} />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-val" required>{fieldLabel}</Label>
+              <Input id="edit-val" type={inputType} value={value} onChange={(e) => setValue(e.target.value)} />
+            </div>
+            {selectField && (
+              <div className="space-y-2">
+                <Label required>{selectField.label}</Label>
+                <Select value={selectValue} onValueChange={setSelectValue}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectField.options.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditItem(null)}>
               ยกเลิก
             </Button>
             <Button
-              disabled={busy || !value}
+              disabled={busy || !value || selectMissing}
               onClick={() => {
                 if (!editItem) return;
-                run(() => onEdit(editItem.id, value), 'บันทึกแล้ว', () => setEditItem(null));
+                run(() => onEdit(editItem.id, value, selectValue || undefined), 'บันทึกแล้ว', () => setEditItem(null));
               }}
             >
               บันทึก

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Application.Common.Exceptions;
 using MotorInsurance.Application.Common.Interfaces;
 using MotorInsurance.Domain.Entities;
+using MotorInsurance.Domain.Enums;
 
 namespace MotorInsurance.Application.Vehicles.Commands;
 
@@ -153,8 +154,8 @@ public class DeleteModelHandler : IRequestHandler<DeleteModelCommand>
 }
 
 // ----- Submodel -----
-public record CreateSubmodelCommand(long ModelId, string Name) : IRequest<long>;
-public record UpdateSubmodelCommand(long Id, string Name) : IRequest;
+public record CreateSubmodelCommand(long ModelId, string Name, Powertrain Powertrain) : IRequest<long>;
+public record UpdateSubmodelCommand(long Id, string Name, Powertrain Powertrain) : IRequest;
 public record DeleteSubmodelCommand(long Id) : IRequest;
 
 public class CreateSubmodelValidator : AbstractValidator<CreateSubmodelCommand>
@@ -163,6 +164,7 @@ public class CreateSubmodelValidator : AbstractValidator<CreateSubmodelCommand>
     {
         RuleFor(x => x.ModelId).GreaterThan(0);
         RuleFor(x => x.Name).NotEmpty().MaximumLength(50);
+        RuleFor(x => x.Powertrain).IsInEnum();
     }
 }
 
@@ -172,6 +174,7 @@ public class UpdateSubmodelValidator : AbstractValidator<UpdateSubmodelCommand>
     {
         RuleFor(x => x.Id).GreaterThan(0);
         RuleFor(x => x.Name).NotEmpty().MaximumLength(50);
+        RuleFor(x => x.Powertrain).IsInEnum();
     }
 }
 
@@ -186,7 +189,7 @@ public class CreateSubmodelHandler : IRequestHandler<CreateSubmodelCommand, long
             throw new NotFoundException(nameof(VehicleModel), req.ModelId);
         if (await _db.VehicleSubmodels.AnyAsync(s => s.ModelId == req.ModelId && s.Name == req.Name, ct))
             throw new ConflictException($"Submodel '{req.Name}' already exists for this model.");
-        var submodel = new VehicleSubmodel { ModelId = req.ModelId, Name = req.Name };
+        var submodel = new VehicleSubmodel { ModelId = req.ModelId, Name = req.Name, Powertrain = req.Powertrain };
         _db.VehicleSubmodels.Add(submodel);
         await _db.SaveChangesAsync(ct);
         return submodel.Id;
@@ -205,6 +208,7 @@ public class UpdateSubmodelHandler : IRequestHandler<UpdateSubmodelCommand>
         if (await _db.VehicleSubmodels.AnyAsync(s => s.ModelId == submodel.ModelId && s.Name == req.Name && s.Id != req.Id, ct))
             throw new ConflictException($"Submodel '{req.Name}' already exists for this model.");
         submodel.Name = req.Name;
+        submodel.Powertrain = req.Powertrain;
         await _db.SaveChangesAsync(ct);
     }
 }

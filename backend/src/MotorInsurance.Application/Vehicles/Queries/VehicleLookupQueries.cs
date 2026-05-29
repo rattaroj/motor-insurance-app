@@ -1,10 +1,12 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Application.Common.Interfaces;
+using MotorInsurance.Domain.Enums;
 
 namespace MotorInsurance.Application.Vehicles.Queries;
 
 public record OptionDto(long Id, string Name);
+public record SubmodelOptionDto(long Id, string Name, Powertrain Powertrain);
 public record ModelYearOptionDto(long Id, int Year);
 
 // ----- Brands -----
@@ -34,16 +36,16 @@ public class GetVehicleModelsHandler : IRequestHandler<GetVehicleModelsQuery, IR
 }
 
 // ----- Submodels by model -----
-public record GetVehicleSubmodelsQuery(long ModelId) : IRequest<IReadOnlyList<OptionDto>>;
+public record GetVehicleSubmodelsQuery(long ModelId) : IRequest<IReadOnlyList<SubmodelOptionDto>>;
 
-public class GetVehicleSubmodelsHandler : IRequestHandler<GetVehicleSubmodelsQuery, IReadOnlyList<OptionDto>>
+public class GetVehicleSubmodelsHandler : IRequestHandler<GetVehicleSubmodelsQuery, IReadOnlyList<SubmodelOptionDto>>
 {
     private readonly IAppDbContext _db;
     public GetVehicleSubmodelsHandler(IAppDbContext db) => _db = db;
 
-    public async Task<IReadOnlyList<OptionDto>> Handle(GetVehicleSubmodelsQuery req, CancellationToken ct) =>
+    public async Task<IReadOnlyList<SubmodelOptionDto>> Handle(GetVehicleSubmodelsQuery req, CancellationToken ct) =>
         await _db.VehicleSubmodels.AsNoTracking().Where(s => s.ModelId == req.ModelId).OrderBy(s => s.Name)
-            .Select(s => new OptionDto(s.Id, s.Name)).ToListAsync(ct);
+            .Select(s => new SubmodelOptionDto(s.Id, s.Name, s.Powertrain)).ToListAsync(ct);
 }
 
 // ----- Years by submodel -----
