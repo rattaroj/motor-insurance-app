@@ -5,7 +5,12 @@ obj/
 node_modules/
 .next/
 .env.local
+*.tsbuildinfo
 # misc
 *.user
 CLAUDE.MD
 .claude*
+# local Liquibase config (machine-specific connection / auth)
+liquibase.properties
+# local JDBC drivers (downloaded for Liquibase, not source)
+db/drivers/
