@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { fmtBaht } from '@/lib/utils';
 
 const STATUSES = ['Draft', 'Quoted', 'Issued', 'Active', 'Cancelled', 'Expired'];
@@ -70,13 +71,26 @@ export default function PoliciesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  กำลังโหลด…
-                </TableCell>
-              </TableRow>
-            )}
+            {isLoading &&
+              Array.from({ length: 8 }).map((_, r) => (
+                <TableRow key={`skeleton-${r}`}>
+                  <TableCell>
+                    <Skeleton className="h-4 w-28" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-32" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-4 w-16" />
+                  </TableCell>
+                </TableRow>
+              ))}
             {data?.items.map((p) => (
               <TableRow key={p.id}>
                 <TableCell>

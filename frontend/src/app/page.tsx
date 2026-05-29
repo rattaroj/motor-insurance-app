@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Users, Car, FileText, ShieldCheck, FileWarning, CreditCard, type LucideIcon } from 'lucide-react';
 import { useGetDashboardSummaryQuery } from '@/lib/api/insuranceApi';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn, fmtBaht } from '@/lib/utils';
 
 function StatCard({
@@ -12,12 +13,14 @@ function StatCard({
   value,
   icon: Icon,
   accent,
+  loading,
 }: {
   href: string;
   label: string;
   value: string | number;
   icon: LucideIcon;
   accent: string;
+  loading?: boolean;
 }) {
   return (
     <Link href={href}>
@@ -28,7 +31,11 @@ function StatCard({
           </div>
           <div>
             <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="text-2xl font-semibold tabular-nums">{value}</p>
+            {loading ? (
+              <Skeleton className="mt-1 h-8 w-16" />
+            ) : (
+              <p className="text-2xl font-semibold tabular-nums">{value}</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -37,7 +44,7 @@ function StatCard({
 }
 
 export default function DashboardPage() {
-  const { data } = useGetDashboardSummaryQuery();
+  const { data, isLoading } = useGetDashboardSummaryQuery();
   const show = (n?: number) => (n ?? '—') as string | number;
 
   return (
@@ -48,12 +55,12 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard href="/customers" label="ลูกค้า" value={show(data?.customers)} icon={Users} accent="bg-blue-100 text-blue-700" />
-        <StatCard href="/vehicles" label="รถยนต์" value={show(data?.vehicles)} icon={Car} accent="bg-sky-100 text-sky-700" />
-        <StatCard href="/quotations" label="ใบเสนอราคา" value={show(data?.quotations)} icon={FileText} accent="bg-indigo-100 text-indigo-700" />
-        <StatCard href="/policies" label="กรมธรรม์ทั้งหมด" value={show(data?.policiesTotal)} icon={ShieldCheck} accent="bg-blue-100 text-blue-700" />
-        <StatCard href="/policies" label="คุ้มครองอยู่" value={show(data?.policiesActive)} icon={ShieldCheck} accent="bg-emerald-100 text-emerald-700" />
-        <StatCard href="/claims" label="เคลมที่ยังไม่ปิด" value={show(data?.claimsOpen)} icon={FileWarning} accent="bg-amber-100 text-amber-700" />
+        <StatCard href="/customers" label="ลูกค้า" value={show(data?.customers)} icon={Users} accent="bg-blue-100 text-blue-700" loading={isLoading} />
+        <StatCard href="/vehicles" label="รถยนต์" value={show(data?.vehicles)} icon={Car} accent="bg-sky-100 text-sky-700" loading={isLoading} />
+        <StatCard href="/quotations" label="ใบเสนอราคา" value={show(data?.quotations)} icon={FileText} accent="bg-indigo-100 text-indigo-700" loading={isLoading} />
+        <StatCard href="/policies" label="กรมธรรม์ทั้งหมด" value={show(data?.policiesTotal)} icon={ShieldCheck} accent="bg-blue-100 text-blue-700" loading={isLoading} />
+        <StatCard href="/policies" label="คุ้มครองอยู่" value={show(data?.policiesActive)} icon={ShieldCheck} accent="bg-emerald-100 text-emerald-700" loading={isLoading} />
+        <StatCard href="/claims" label="เคลมที่ยังไม่ปิด" value={show(data?.claimsOpen)} icon={FileWarning} accent="bg-amber-100 text-amber-700" loading={isLoading} />
       </div>
 
       <Card>
@@ -64,14 +71,22 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">รายการรอชำระ</p>
-              <p className="text-2xl font-semibold tabular-nums">{show(data?.paymentsPending)}</p>
+              {isLoading ? (
+                <Skeleton className="mt-1 h-8 w-16" />
+              ) : (
+                <p className="text-2xl font-semibold tabular-nums">{show(data?.paymentsPending)}</p>
+              )}
             </div>
           </div>
           <div className="text-right">
             <p className="text-sm text-muted-foreground">ยอดรวมรอชำระ</p>
-            <p className="text-2xl font-semibold tabular-nums text-blue-700">
-              {data ? fmtBaht(data.paymentsPendingAmount) : '—'}
-            </p>
+            {isLoading ? (
+              <Skeleton className="mt-1 ml-auto h-8 w-28" />
+            ) : (
+              <p className="text-2xl font-semibold tabular-nums text-blue-700">
+                {data ? fmtBaht(data.paymentsPendingAmount) : '—'}
+              </p>
+            )}
           </div>
           <Link href="/payments" className="text-sm font-medium text-primary hover:underline">
             ไปที่การชำระเงิน →

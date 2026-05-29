@@ -5,6 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 export type Column<T> = {
   header: React.ReactNode;
@@ -49,6 +51,8 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const isEmpty = !loading && (rows?.length ?? 0) === 0;
+  // While loading, fill the body with shimmering placeholder rows so the table keeps its height.
+  const skeletonRows = Math.min(pageSize, 8);
 
   return (
     <div className="space-y-3">
@@ -81,13 +85,16 @@ export function DataTable<T>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading && (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-center text-muted-foreground">
-                  กำลังโหลด…
-                </TableCell>
-              </TableRow>
-            )}
+            {loading &&
+              Array.from({ length: skeletonRows }).map((_, r) => (
+                <TableRow key={`skeleton-${r}`}>
+                  {columns.map((c, i) => (
+                    <TableCell key={i} className={c.className}>
+                      <Skeleton className={cn('h-4 w-2/3', c.className?.includes('text-right') && 'ml-auto')} />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
             {!loading &&
               rows?.map((r) => (
                 <TableRow key={getKey(r)}>
