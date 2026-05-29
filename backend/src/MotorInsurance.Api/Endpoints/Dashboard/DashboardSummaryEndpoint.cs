@@ -1,9 +1,11 @@
-using MediatR;
+using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
+using MotorInsurance.Api.Authorization;
 using MotorInsurance.Application.Common.Interfaces;
 using MotorInsurance.Domain.Enums;
+using Perms = MotorInsurance.Application.Common.Authorization.Permissions;
 
-namespace MotorInsurance.Application.Dashboard.Queries;
+namespace MotorInsurance.Api.Endpoints.Dashboard;
 
 public record DashboardSummaryDto(
     int Customers,
@@ -15,18 +17,23 @@ public record DashboardSummaryDto(
     int PaymentsPending,
     decimal PaymentsPendingAmount);
 
-public record GetDashboardSummaryQuery : IRequest<DashboardSummaryDto>;
-
-public class GetDashboardSummaryHandler : IRequestHandler<GetDashboardSummaryQuery, DashboardSummaryDto>
+/// <summary>GET /api/dashboard/summary — headline counts for the dashboard.</summary>
+public class DashboardSummaryEndpoint : EndpointWithoutRequest<DashboardSummaryDto>
 {
     private readonly IAppDbContext _db;
-    public GetDashboardSummaryHandler(IAppDbContext db) => _db = db;
+    public DashboardSummaryEndpoint(IAppDbContext db) => _db = db;
 
-    public async Task<DashboardSummaryDto> Handle(GetDashboardSummaryQuery req, CancellationToken ct)
+    public override void Configure()
+    {
+        Get("dashboard/summary");
+        Policies(PermissionPolicy.For(Perms.DashboardRead));
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
     {
         var pending = _db.Payments.Where(p => p.Status == PaymentStatus.Pending);
 
-        return new DashboardSummaryDto(
+        Response = new DashboardSummaryDto(
             Customers: await _db.Customers.CountAsync(ct),
             Vehicles: await _db.Vehicles.CountAsync(ct),
             Quotations: await _db.Quotations.CountAsync(ct),

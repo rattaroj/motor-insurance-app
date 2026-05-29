@@ -1,34 +1,48 @@
-using MediatR;
+using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
+using MotorInsurance.Api.Authorization;
 using MotorInsurance.Application.Common.Interfaces;
 using MotorInsurance.Application.Common.Models;
 using MotorInsurance.Domain.Enums;
+using Perms = MotorInsurance.Application.Common.Authorization.Permissions;
 
-namespace MotorInsurance.Application.Vehicles.Queries;
+namespace MotorInsurance.Api.Endpoints.Vehicles;
 
 public record VehicleDto(
     long Id, long CustomerId, string CustomerName, string RegistrationNo, string Province,
     long ModelYearId, string Brand, string Model, string Submodel, Powertrain Powertrain,
     int Year, string? ChassisNo);
 
-public record GetVehiclesQuery(int Page = 1, int PageSize = 20, string? Search = null, long? CustomerId = null)
-    : IRequest<PagedResult<VehicleDto>>;
+public class ListVehiclesRequest
+{
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
+    public string? Search { get; set; }
+    public long? CustomerId { get; set; }
+}
 
-public class GetVehiclesHandler : IRequestHandler<GetVehiclesQuery, PagedResult<VehicleDto>>
+/// <summary>GET /api/vehicles — paged, filterable by owner + free-text search.</summary>
+public class ListVehiclesEndpoint : Endpoint<ListVehiclesRequest, PagedResult<VehicleDto>>
 {
     private readonly IAppDbContext _db;
-    public GetVehiclesHandler(IAppDbContext db) => _db = db;
+    public ListVehiclesEndpoint(IAppDbContext db) => _db = db;
 
-    public async Task<PagedResult<VehicleDto>> Handle(GetVehiclesQuery req, CancellationToken ct)
+    public override void Configure()
+    {
+        Get("vehicles");
+        Policies(PermissionPolicy.For(Perms.VehicleRead));
+    }
+
+    public override async Task HandleAsync(ListVehiclesRequest r, CancellationToken ct)
     {
         var query = _db.Vehicles.AsNoTracking().AsQueryable();
 
-        if (req.CustomerId is { } cid)
+        if (r.CustomerId is { } cid)
             query = query.Where(v => v.CustomerId == cid);
 
-        if (!string.IsNullOrWhiteSpace(req.Search))
+        if (!string.IsNullOrWhiteSpace(r.Search))
         {
-            var s = req.Search.Trim();
+            var s = r.Search.Trim();
             query = query.Where(v =>
                 v.RegistrationNo.Contains(s) ||
                 v.Province.Contains(s) ||
@@ -38,7 +52,7 @@ public class GetVehiclesHandler : IRequestHandler<GetVehiclesQuery, PagedResult<
                 v.Customer.FullName.Contains(s));
         }
 
-        return await query
+        Response = await query
             .OrderByDescending(v => v.Id)
             .Select(v => new VehicleDto(
                 v.Id,
@@ -53,6 +67,6 @@ public class GetVehiclesHandler : IRequestHandler<GetVehiclesQuery, PagedResult<
                 v.ModelYear.Submodel.Powertrain,
                 v.ModelYear.Year,
                 v.ChassisNo))
-            .ToPagedResultAsync(req.Page, req.PageSize, ct);
+            .ToPagedResultAsync(r.Page, r.PageSize, ct);
     }
 }

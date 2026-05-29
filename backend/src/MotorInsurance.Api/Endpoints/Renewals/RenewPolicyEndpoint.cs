@@ -1,41 +1,31 @@
+using FastEndpoints;
 using FluentValidation;
-using MediatR;
 using Microsoft.EntityFrameworkCore;
+using MotorInsurance.Api.Authorization;
 using MotorInsurance.Application.Common.Exceptions;
 using MotorInsurance.Application.Common.Interfaces;
-using MotorInsurance.Application.Quotations.Commands;
+using MotorInsurance.Application.Quotations;
 using MotorInsurance.Domain.Entities;
 using MotorInsurance.Domain.Enums;
+using Perms = MotorInsurance.Application.Common.Authorization.Permissions;
 
-namespace MotorInsurance.Application.Renewals.Commands;
+namespace MotorInsurance.Api.Endpoints.Renewals;
 
-// ============================================================
-// Policy renewal flow
-// ------------------------------------------------------------
-// A renewal creates a NEW policy linked to the previous one via
-// PreviousPolicyId. The new policy starts at Issued with a fresh
-// premium (optionally adjusted), effective the day after the old
-// one expires. The old policy is left to expire naturally.
-//
-// Renewal eligibility:
-//   - previous policy must be Active
-//   - within the renewal window (e.g. 60 days before expiry)
-// ============================================================
-public record RenewPolicyCommand(
-    long PolicyId,
-    decimal? AdjustedSumInsured = null) : IRequest<long>;
+public record RenewPolicyRequest(decimal? AdjustedSumInsured);
+public record RenewPolicyResponse(long Id);
 
-public class RenewPolicyValidator : AbstractValidator<RenewPolicyCommand>
+public class RenewPolicyValidator : Validator<RenewPolicyRequest>
 {
-    public RenewPolicyValidator()
-    {
-        RuleFor(x => x.PolicyId).GreaterThan(0);
-        RuleFor(x => x.AdjustedSumInsured)
-            .GreaterThan(0).When(x => x.AdjustedSumInsured.HasValue);
-    }
+    public RenewPolicyValidator() =>
+        RuleFor(x => x.AdjustedSumInsured).GreaterThan(0).When(x => x.AdjustedSumInsured.HasValue);
 }
 
-public class RenewPolicyHandler : IRequestHandler<RenewPolicyCommand, long>
+/// <summary>
+/// POST /api/renewals/{policyId} — create a NEW policy linked to the previous one
+/// (PreviousPolicyId), starting at Issued with a fresh premium, effective the day after
+/// the old policy expires. Requires the previous policy Active and within the 60-day window.
+/// </summary>
+public class RenewPolicyEndpoint : Endpoint<RenewPolicyRequest, RenewPolicyResponse>
 {
     private const int RenewalWindowDays = 60;
 
@@ -43,13 +33,21 @@ public class RenewPolicyHandler : IRequestHandler<RenewPolicyCommand, long>
     private readonly IDocumentNumberGenerator _docNo;
     private readonly IDateTimeProvider _clock;
 
-    public RenewPolicyHandler(IAppDbContext db, IDocumentNumberGenerator docNo, IDateTimeProvider clock)
+    public RenewPolicyEndpoint(IAppDbContext db, IDocumentNumberGenerator docNo, IDateTimeProvider clock)
         => (_db, _docNo, _clock) = (db, docNo, clock);
 
-    public async Task<long> Handle(RenewPolicyCommand req, CancellationToken ct)
+    public override void Configure()
     {
-        var prev = await _db.Policies.FirstOrDefaultAsync(p => p.Id == req.PolicyId, ct)
-            ?? throw new NotFoundException(nameof(Policy), req.PolicyId);
+        Post("renewals/{policyId}");
+        Policies(PermissionPolicy.For(Perms.PolicyRenew));
+    }
+
+    public override async Task HandleAsync(RenewPolicyRequest r, CancellationToken ct)
+    {
+        var policyId = Route<long>("policyId");
+
+        var prev = await _db.Policies.FirstOrDefaultAsync(p => p.Id == policyId, ct)
+            ?? throw new NotFoundException(nameof(Policy), policyId);
 
         if (prev.Status != PolicyStatus.Active)
             throw new ConflictException("Only an active policy can be renewed.");
@@ -63,12 +61,10 @@ public class RenewPolicyHandler : IRequestHandler<RenewPolicyCommand, long>
             throw new ConflictException(
                 $"Renewal window opens on {windowOpens:yyyy-MM-dd} ({RenewalWindowDays} days before expiry).");
 
-        // Guard against duplicate renewal.
-        var alreadyRenewed = await _db.Policies.AnyAsync(p => p.PreviousPolicyId == prev.Id, ct);
-        if (alreadyRenewed)
+        if (await _db.Policies.AnyAsync(p => p.PreviousPolicyId == prev.Id, ct))
             throw new ConflictException("This policy has already been renewed.");
 
-        var sumInsured = req.AdjustedSumInsured ?? prev.SumInsured;
+        var sumInsured = r.AdjustedSumInsured ?? prev.SumInsured;
         var newEffective = prev.ExpiryDate.Value.AddDays(1);
 
         var renewal = new Policy
@@ -99,6 +95,6 @@ public class RenewPolicyHandler : IRequestHandler<RenewPolicyCommand, long>
         });
 
         await _db.SaveChangesAsync(ct);
-        return renewal.Id;
+        await Send.ResponseAsync(new RenewPolicyResponse(renewal.Id), 201, ct);
     }
 }

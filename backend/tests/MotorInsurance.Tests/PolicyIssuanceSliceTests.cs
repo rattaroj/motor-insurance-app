@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Api.Endpoints.Policies;
 using MotorInsurance.Application.Common.Interfaces;
-using MotorInsurance.Application.Quotations.Commands;
+using MotorInsurance.Application.Quotations;
 using MotorInsurance.Domain.Entities;
 using MotorInsurance.Domain.Enums;
 using Xunit;
@@ -73,8 +73,19 @@ public class PolicyIssuanceSliceTests
         db.Vehicles.Add(new Vehicle { Id = 1, CustomerId = 1, RegistrationNo = "กก1234", Province = "กทม", ModelYearId = 1 });
         await db.SaveChangesAsync();
 
-        var quoteId = await new CreateQuotationHandler(db, docNo, clock)
-            .Handle(new CreateQuotationCommand(1, 1, CoverageType.Type1, 500_000m), default);
+        db.Quotations.Add(new Quotation
+        {
+            Id = 1,
+            QuotationNo = "QUO-TEST-0001",
+            CustomerId = 1,
+            VehicleId = 1,
+            CoverageType = CoverageType.Type1,
+            SumInsured = 500_000m,
+            Premium = PremiumCalculator.Calculate(CoverageType.Type1, 500_000m),
+            ValidUntil = new DateOnly(2026, 6, 27),
+        });
+        await db.SaveChangesAsync();
+        const long quoteId = 1;
 
         var policyId = await new IssuePolicyEndpoint(db, docNo, clock)
             .IssueAsync(new IssuePolicyRequest(quoteId, new DateOnly(2026, 6, 1)), default);

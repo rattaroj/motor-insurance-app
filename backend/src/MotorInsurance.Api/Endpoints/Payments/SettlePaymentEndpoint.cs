@@ -1,47 +1,54 @@
+using FastEndpoints;
 using FluentValidation;
-using MediatR;
 using Microsoft.EntityFrameworkCore;
+using MotorInsurance.Api.Authorization;
 using MotorInsurance.Application.Common.Exceptions;
 using MotorInsurance.Application.Common.Interfaces;
 using MotorInsurance.Domain.Entities;
 using MotorInsurance.Domain.Enums;
 using MotorInsurance.Domain.StateMachines;
+using Perms = MotorInsurance.Application.Common.Authorization.Permissions;
 
-namespace MotorInsurance.Application.Payments.Commands;
+namespace MotorInsurance.Api.Endpoints.Payments;
 
-// ============================================================
-// Settle a payment (mark paid). For inbound premium this can
-// auto-activate the policy; for outbound it closes the claim flow.
-// ============================================================
-public record SettlePaymentCommand(long PaymentId, string ReferenceNo) : IRequest;
+public record SettlePaymentRequest(string ReferenceNo);
 
-public class SettlePaymentValidator : AbstractValidator<SettlePaymentCommand>
+public class SettlePaymentValidator : Validator<SettlePaymentRequest>
 {
     public SettlePaymentValidator() => RuleFor(x => x.ReferenceNo).NotEmpty().MaximumLength(100);
 }
 
-public class SettlePaymentHandler : IRequestHandler<SettlePaymentCommand>
+/// <summary>
+/// POST /api/payments/{id}/settle — mark a payment paid. Side effects: inbound premium paid
+/// auto-activates an Issued policy; an outbound payout moves its claim Approved -> Paid.
+/// </summary>
+public class SettlePaymentEndpoint : Endpoint<SettlePaymentRequest>
 {
     private readonly IAppDbContext _db;
     private readonly IDateTimeProvider _clock;
+    public SettlePaymentEndpoint(IAppDbContext db, IDateTimeProvider clock) => (_db, _clock) = (db, clock);
 
-    public SettlePaymentHandler(IAppDbContext db, IDateTimeProvider clock)
-        => (_db, _clock) = (db, clock);
-
-    public async Task Handle(SettlePaymentCommand req, CancellationToken ct)
+    public override void Configure()
     {
+        Post("payments/{id}/settle");
+        Policies(PermissionPolicy.For(Perms.PaymentSettle));
+    }
+
+    public override async Task HandleAsync(SettlePaymentRequest r, CancellationToken ct)
+    {
+        var id = Route<long>("id");
         var payment = await _db.Payments
             .Include(p => p.Policy)
             .Include(p => p.Claim)
-            .FirstOrDefaultAsync(p => p.Id == req.PaymentId, ct)
-            ?? throw new NotFoundException(nameof(Payment), req.PaymentId);
+            .FirstOrDefaultAsync(p => p.Id == id, ct)
+            ?? throw new NotFoundException(nameof(Payment), id);
 
         if (payment.Status != PaymentStatus.Pending)
             throw new ConflictException($"Payment is already {payment.Status}.");
 
         payment.Status = PaymentStatus.Paid;
         payment.PaidAt = _clock.UtcNow;
-        payment.ReferenceNo = req.ReferenceNo;
+        payment.ReferenceNo = r.ReferenceNo;
 
         // Side effects by direction:
         if (payment is { Direction: PaymentDirection.Inbound, Policy: not null })
@@ -64,5 +71,6 @@ public class SettlePaymentHandler : IRequestHandler<SettlePaymentCommand>
         }
 
         await _db.SaveChangesAsync(ct);
+        await Send.NoContentAsync(ct);
     }
 }
