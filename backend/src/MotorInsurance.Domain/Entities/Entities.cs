@@ -58,6 +58,45 @@ public class VehicleModelYear
     public VehicleSubmodel Submodel { get; set; } = default!;
 }
 
+// ----- Thai administrative-division master data (cascading lookups; no audit columns).
+// Ids are the official codes (province/district/subdistrict); postal_code.Id is the
+// 5-digit code as a number. A subdistrict references exactly one postal code. -----
+public class Province
+{
+    public long Id { get; set; }
+    public string NameTh { get; set; } = default!;
+    public string NameEn { get; set; } = default!;
+    public ICollection<District> Districts { get; set; } = new List<District>();
+}
+
+public class District
+{
+    public long Id { get; set; }
+    public long ProvinceId { get; set; }
+    public string NameTh { get; set; } = default!;
+    public string NameEn { get; set; } = default!;
+    public Province Province { get; set; } = default!;
+    public ICollection<Subdistrict> Subdistricts { get; set; } = new List<Subdistrict>();
+}
+
+public class PostalCode
+{
+    public long Id { get; set; }
+    public string Code { get; set; } = default!;
+    public ICollection<Subdistrict> Subdistricts { get; set; } = new List<Subdistrict>();
+}
+
+public class Subdistrict
+{
+    public long Id { get; set; }
+    public long DistrictId { get; set; }
+    public long PostalCodeId { get; set; }
+    public string NameTh { get; set; } = default!;
+    public string NameEn { get; set; } = default!;
+    public District District { get; set; } = default!;
+    public PostalCode PostalCode { get; set; } = default!;
+}
+
 public class Quotation : BaseEntity
 {
     public string QuotationNo { get; set; } = default!;

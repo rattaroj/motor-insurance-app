@@ -100,6 +100,68 @@ public class VehicleModelYearConfiguration : IEntityTypeConfiguration<VehicleMod
     }
 }
 
+public class ProvinceConfiguration : IEntityTypeConfiguration<Province>
+{
+    public void Configure(EntityTypeBuilder<Province> b)
+    {
+        b.ToTable("province");
+        b.HasKey(x => x.Id);
+        // Id is the official province code (supplied, not DB-generated).
+        b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+        b.Property(x => x.NameTh).HasColumnName("name_th").HasMaxLength(150).IsRequired();
+        b.Property(x => x.NameEn).HasColumnName("name_en").HasMaxLength(150).IsRequired();
+    }
+}
+
+public class DistrictConfiguration : IEntityTypeConfiguration<District>
+{
+    public void Configure(EntityTypeBuilder<District> b)
+    {
+        b.ToTable("district");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+        b.Property(x => x.ProvinceId).HasColumnName("province_id");
+        b.Property(x => x.NameTh).HasColumnName("name_th").HasMaxLength(150).IsRequired();
+        b.Property(x => x.NameEn).HasColumnName("name_en").HasMaxLength(150).IsRequired();
+        b.HasIndex(x => x.ProvinceId);
+        b.HasOne(x => x.Province).WithMany(p => p.Districts)
+            .HasForeignKey(x => x.ProvinceId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class PostalCodeConfiguration : IEntityTypeConfiguration<PostalCode>
+{
+    public void Configure(EntityTypeBuilder<PostalCode> b)
+    {
+        b.ToTable("postal_code");
+        b.HasKey(x => x.Id);
+        // Id is the 5-digit postal code as a number (supplied, not DB-generated).
+        b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+        b.Property(x => x.Code).HasColumnName("code").HasMaxLength(5).IsFixedLength().IsRequired();
+        b.HasIndex(x => x.Code).IsUnique();
+    }
+}
+
+public class SubdistrictConfiguration : IEntityTypeConfiguration<Subdistrict>
+{
+    public void Configure(EntityTypeBuilder<Subdistrict> b)
+    {
+        b.ToTable("subdistrict");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+        b.Property(x => x.DistrictId).HasColumnName("district_id");
+        b.Property(x => x.PostalCodeId).HasColumnName("postal_code_id");
+        b.Property(x => x.NameTh).HasColumnName("name_th").HasMaxLength(150).IsRequired();
+        b.Property(x => x.NameEn).HasColumnName("name_en").HasMaxLength(150).IsRequired();
+        b.HasIndex(x => x.DistrictId);
+        b.HasIndex(x => x.PostalCodeId);
+        b.HasOne(x => x.District).WithMany(d => d.Subdistricts)
+            .HasForeignKey(x => x.DistrictId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.PostalCode).WithMany(p => p.Subdistricts)
+            .HasForeignKey(x => x.PostalCodeId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 internal static class CoverageConverter
 {
     // Switch expressions can't appear inside an expression tree, so the conversion

@@ -97,4 +97,16 @@
       ALTER TABLE customer DROP COLUMN created_user, updated_user, updated_at, is_active;
     </rollback>
   </changeSet>
+
+  <changeSet id="V011-thai-geography" author="rattaroj.nit">
+    <!-- splitStatements="true": DDL (CREATE TABLE) must run in its own batch before the
+         seed INSERTs that reference the just-created tables (SQL Server name resolution). -->
+    <sqlFile path="./scripts/V011__thai_geography.sql" relativeToChangelogFile="true" splitStatements="true"/>
+    <rollback>
+      DROP TABLE IF EXISTS subdistrict;
+      DROP TABLE IF EXISTS postal_code;
+      DROP TABLE IF EXISTS district;
+      DROP TABLE IF EXISTS province;
+    </rollback>
+  </changeSet>
 </databaseChangeLog>

@@ -16,6 +16,10 @@ public interface IAppDbContext
     DbSet<VehicleModel> VehicleModels { get; }
     DbSet<VehicleSubmodel> VehicleSubmodels { get; }
     DbSet<VehicleModelYear> VehicleModelYears { get; }
+    DbSet<Province> Provinces { get; }
+    DbSet<District> Districts { get; }
+    DbSet<PostalCode> PostalCodes { get; }
+    DbSet<Subdistrict> Subdistricts { get; }
     DbSet<Quotation> Quotations { get; }
     DbSet<Policy> Policies { get; }
     DbSet<Claim> Claims { get; }

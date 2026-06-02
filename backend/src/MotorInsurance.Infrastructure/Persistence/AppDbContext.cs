@@ -26,6 +26,10 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<VehicleModel> VehicleModels => Set<VehicleModel>();
     public DbSet<VehicleSubmodel> VehicleSubmodels => Set<VehicleSubmodel>();
     public DbSet<VehicleModelYear> VehicleModelYears => Set<VehicleModelYear>();
+    public DbSet<Province> Provinces => Set<Province>();
+    public DbSet<District> Districts => Set<District>();
+    public DbSet<PostalCode> PostalCodes => Set<PostalCode>();
+    public DbSet<Subdistrict> Subdistricts => Set<Subdistrict>();
     public DbSet<Quotation> Quotations => Set<Quotation>();
     public DbSet<Policy> Policies => Set<Policy>();
     public DbSet<Claim> Claims => Set<Claim>();

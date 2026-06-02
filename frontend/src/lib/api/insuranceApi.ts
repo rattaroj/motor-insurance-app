@@ -66,6 +66,26 @@ export interface ModelYearOption {
   year: number;
 }
 
+// Thai administrative-division lookups (bilingual; subdistrict carries its postal code).
+export interface GeoOption {
+  id: number;
+  nameTh: string;
+  nameEn: string;
+}
+
+export interface SubdistrictOption {
+  id: number;
+  nameTh: string;
+  nameEn: string;
+  postalCodeId: number;
+  postalCode: string;
+}
+
+export interface PostalCodeOption {
+  id: number;
+  code: string;
+}
+
 export interface QuotationDto {
   id: number;
   quotationNo: string;
@@ -223,6 +243,10 @@ export const insuranceApi = createApi({
     'VModel',
     'VSubmodel',
     'VYear',
+    'Province',
+    'District',
+    'Subdistrict',
+    'PostalCode',
   ],
   endpoints: (build) => ({
     // ---------- Auth ----------
@@ -348,6 +372,79 @@ export const insuranceApi = createApi({
     deleteModelYear: build.mutation<void, number>({
       query: (id) => ({ url: `lookups/vehicle-model-years/${id}`, method: 'DELETE' }),
       invalidatesTags: ['VYear'],
+    }),
+
+    // ---------- Thai administrative-division lookups (cascading: province -> district -> subdistrict + postal code) ----------
+    getProvinces: build.query<GeoOption[], void>({
+      query: () => 'lookups/provinces',
+      providesTags: ['Province'],
+    }),
+    getDistricts: build.query<GeoOption[], number>({
+      query: (provinceId) => `lookups/districts?provinceId=${provinceId}`,
+      providesTags: ['District'],
+    }),
+    getSubdistricts: build.query<SubdistrictOption[], number>({
+      query: (districtId) => `lookups/subdistricts?districtId=${districtId}`,
+      providesTags: ['Subdistrict'],
+    }),
+    getPostalCodes: build.query<PostalCodeOption[], void>({
+      query: () => 'lookups/postal-codes',
+      providesTags: ['PostalCode'],
+    }),
+
+    createProvince: build.mutation<{ id: number }, { id: number; nameTh: string; nameEn: string }>({
+      query: (body) => ({ url: 'lookups/provinces', method: 'POST', body }),
+      invalidatesTags: ['Province'],
+    }),
+    updateProvince: build.mutation<void, { id: number; nameTh: string; nameEn: string }>({
+      query: ({ id, ...body }) => ({ url: `lookups/provinces/${id}`, method: 'PUT', body }),
+      invalidatesTags: ['Province'],
+    }),
+    deleteProvince: build.mutation<void, number>({
+      query: (id) => ({ url: `lookups/provinces/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['Province'],
+    }),
+
+    createDistrict: build.mutation<{ id: number }, { id: number; provinceId: number; nameTh: string; nameEn: string }>({
+      query: (body) => ({ url: 'lookups/districts', method: 'POST', body }),
+      invalidatesTags: ['District'],
+    }),
+    updateDistrict: build.mutation<void, { id: number; nameTh: string; nameEn: string }>({
+      query: ({ id, ...body }) => ({ url: `lookups/districts/${id}`, method: 'PUT', body }),
+      invalidatesTags: ['District'],
+    }),
+    deleteDistrict: build.mutation<void, number>({
+      query: (id) => ({ url: `lookups/districts/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['District'],
+    }),
+
+    createSubdistrict: build.mutation<
+      { id: number },
+      { id: number; districtId: number; postalCodeId: number; nameTh: string; nameEn: string }
+    >({
+      query: (body) => ({ url: 'lookups/subdistricts', method: 'POST', body }),
+      invalidatesTags: ['Subdistrict'],
+    }),
+    updateSubdistrict: build.mutation<void, { id: number; nameTh: string; nameEn: string; postalCodeId: number }>({
+      query: ({ id, ...body }) => ({ url: `lookups/subdistricts/${id}`, method: 'PUT', body }),
+      invalidatesTags: ['Subdistrict'],
+    }),
+    deleteSubdistrict: build.mutation<void, number>({
+      query: (id) => ({ url: `lookups/subdistricts/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['Subdistrict'],
+    }),
+
+    createPostalCode: build.mutation<{ id: number }, { code: string }>({
+      query: (body) => ({ url: 'lookups/postal-codes', method: 'POST', body }),
+      invalidatesTags: ['PostalCode'],
+    }),
+    updatePostalCode: build.mutation<void, { id: number; code: string }>({
+      query: ({ id, code }) => ({ url: `lookups/postal-codes/${id}`, method: 'PUT', body: { code } }),
+      invalidatesTags: ['PostalCode'],
+    }),
+    deletePostalCode: build.mutation<void, number>({
+      query: (id) => ({ url: `lookups/postal-codes/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['PostalCode'],
     }),
 
     // ---------- Quotations ----------
@@ -492,6 +589,22 @@ export const {
   useCreateModelYearMutation,
   useUpdateModelYearMutation,
   useDeleteModelYearMutation,
+  useGetProvincesQuery,
+  useGetDistrictsQuery,
+  useGetSubdistrictsQuery,
+  useGetPostalCodesQuery,
+  useCreateProvinceMutation,
+  useUpdateProvinceMutation,
+  useDeleteProvinceMutation,
+  useCreateDistrictMutation,
+  useUpdateDistrictMutation,
+  useDeleteDistrictMutation,
+  useCreateSubdistrictMutation,
+  useUpdateSubdistrictMutation,
+  useDeleteSubdistrictMutation,
+  useCreatePostalCodeMutation,
+  useUpdatePostalCodeMutation,
+  useDeletePostalCodeMutation,
   useGetQuotationsQuery,
   useCreateQuotationMutation,
   useGetPoliciesQuery,
