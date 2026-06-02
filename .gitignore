@@ -14,3 +14,12 @@ CLAUDE.MD
 liquibase.properties
 # local JDBC drivers (downloaded for Liquibase, not source)
 db/drivers/
+# editor / IDE workspace settings
+.vscode/
+# TestSprite-generated tests, fixtures and logs
+testsprite_tests/
+# uploaded runtime files (driver ID-card images — PII, not source)
+backend/src/MotorInsurance.Api/wwwroot/uploads/
+# local fixtures + scratch files
+fixtures/
+geo.tmp.json

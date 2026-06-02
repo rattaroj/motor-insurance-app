@@ -55,10 +55,16 @@ public class ListClaimsEndpoint : Endpoint<ListClaimsRequest, PagedResult<ClaimD
             .OrderByDescending(c => c.Id)
             .Select(c => new
             {
-                c.Id, c.ClaimNo, c.PolicyId,
+                c.Id,
+                c.ClaimNo,
+                c.PolicyId,
                 PolicyNo = c.Policy.PolicyNo,
-                c.Status, c.IncidentDate, c.Description,
-                c.ClaimedAmount, c.ApprovedAmount, c.RejectReason,
+                c.Status,
+                c.IncidentDate,
+                c.Description,
+                c.ClaimedAmount,
+                c.ApprovedAmount,
+                c.RejectReason,
             })
             .ToPagedResultAsync(
                 r.Page, r.PageSize,

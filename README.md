@@ -78,7 +78,10 @@ npm run dev           # → http://localhost:3000
 
 | Workflow | Command/Query | Endpoint |
 |----------|---------------|----------|
-| สร้างใบเสนอราคา | `CreateQuotationCommand` | `POST /api/quotations` |
+| แก้ไขลูกค้า | `UpdateCustomerEndpoint` | `PUT /api/customers/{id}` |
+| ลบลูกค้า | `DeleteCustomerEndpoint` | `DELETE /api/customers/{id}` |
+| อัปโหลดรูปบัตรผู้ขับขี่ | `UploadIdCardEndpoint` | `POST /api/uploads/id-card` (multipart) |
+| สร้างใบเสนอราคา (พร้อมผู้ขับขี่ 1–5 คน) | `CreateQuotationEndpoint` | `POST /api/quotations` |
 | ออกกรมธรรม์ | `IssuePolicyCommand` | `POST /api/policies/issue` |
 | เปิดใช้งาน | `ActivatePolicyCommand` | `POST /api/policies/{id}/activate` |
 | ยกเลิก | `CancelPolicyCommand` | `POST /api/policies/{id}/cancel` |
@@ -88,6 +91,7 @@ npm run dev           # → http://localhost:3000
 | อนุมัติเคลม | `ApproveClaimCommand` | `POST /api/claims/{id}/approve` |
 | ปฏิเสธเคลม | `RejectClaimCommand` | `POST /api/claims/{id}/reject` |
 | ชำระเงิน | `SettlePaymentCommand` | `POST /api/payments/{id}/settle` |
+| สลักหลังกรมธรรม์ (แก้ข้อมูลลูกค้า) | `CreateEndorsementEndpoint` | `POST /api/policies/{policyId}/endorsements` |
 | ดูกรมธรรม์ | `GetPoliciesQuery` / `GetPolicyByIdQuery` | `GET /api/policies` |
 | ดูประวัติ (temporal) | `GetPolicyHistoryQuery` | `GET /api/policies/{id}/history` |
 
@@ -103,10 +107,17 @@ npm run dev           # → http://localhost:3000
 
 ## End-to-end ตัวอย่าง (curl)
 
+> ตัวอย่างละ token ออกเพื่อความกระชับ — จริง ๆ ต้องแนบ `-H 'Authorization: Bearer <token>'`
+
 ```bash
-# 1) สร้าง quotation
+# 0) อัปโหลดรูปบัตรผู้ขับขี่ (คืน path ที่ใช้แนบใน quotation)
+curl -X POST localhost:5000/api/uploads/id-card -F 'file=@idcard.jpg'
+#   → { "path": "uploads/idcards/xxxx.jpg" }
+
+# 1) สร้าง quotation พร้อมผู้ขับขี่ระบุชื่อ (1–5 คน + รูปบัตร)
 curl -X POST localhost:5000/api/quotations -H 'Content-Type: application/json' \
-  -d '{"customerId":1,"vehicleId":1,"coverageType":"Type1","sumInsured":500000}'
+  -d '{"customerId":1,"vehicleId":1,"coverageType":"Type1","sumInsured":500000,
+       "drivers":[{"fullName":"สมชาย ใจดี","nationalId":"1100000000001","idCardImagePath":"uploads/idcards/xxxx.jpg"}]}'
 
 # 2) ออกกรมธรรม์จาก quotation
 curl -X POST localhost:5000/api/policies/issue -H 'Content-Type: application/json' \
@@ -118,6 +129,10 @@ curl -X POST localhost:5000/api/payments/1/settle -H 'Content-Type: application/
 
 # 4) ต่ออายุ
 curl -X POST localhost:5000/api/renewals/1 -H 'Content-Type: application/json' -d '{}'
+
+# 5) แก้ข้อมูลลูกค้าที่มีกรมธรรม์แล้ว → ต้องสลักหลัง (แก้ตรง ๆ ผ่าน PUT /api/customers/{id} จะได้ 409)
+curl -X POST localhost:5000/api/policies/1/endorsements -H 'Content-Type: application/json' \
+  -d '{"phone":"0899999999","effectiveDate":"2026-06-10","note":"ลูกค้าแจ้งเปลี่ยนเบอร์"}'
 ```
 
 ---
