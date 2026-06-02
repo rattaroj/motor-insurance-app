@@ -13,11 +13,24 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).HasColumnName("id");
         b.Property(x => x.NationalId).HasColumnName("national_id").HasMaxLength(13).IsRequired();
+        b.Property(x => x.Title).HasColumnName("title").HasMaxLength(20);
+        b.Property(x => x.FirstName).HasColumnName("first_name").HasMaxLength(100).IsRequired();
+        b.Property(x => x.LastName).HasColumnName("last_name").HasMaxLength(100).IsRequired();
         b.Property(x => x.FullName).HasColumnName("full_name").HasMaxLength(200).IsRequired();
+        b.Property(x => x.BirthDate).HasColumnName("birth_date");
         b.Property(x => x.Phone).HasColumnName("phone").HasMaxLength(20);
         b.Property(x => x.Email).HasColumnName("email").HasMaxLength(255);
+        b.Property(x => x.AddressLine).HasColumnName("address_line").HasMaxLength(255);
+        b.Property(x => x.ProvinceId).HasColumnName("province_id");
+        b.Property(x => x.DistrictId).HasColumnName("district_id");
+        b.Property(x => x.SubdistrictId).HasColumnName("subdistrict_id");
+        b.Property(x => x.PostalCodeId).HasColumnName("postal_code_id");
         b.Property(x => x.CreatedAt).HasColumnName("created_at");
         b.HasIndex(x => x.NationalId).IsUnique();
+        b.HasOne(x => x.Province).WithMany().HasForeignKey(x => x.ProvinceId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.District).WithMany().HasForeignKey(x => x.DistrictId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.Subdistrict).WithMany().HasForeignKey(x => x.SubdistrictId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.PostalCode).WithMany().HasForeignKey(x => x.PostalCodeId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

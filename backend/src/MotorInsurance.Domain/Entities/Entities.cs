@@ -6,10 +6,45 @@ namespace MotorInsurance.Domain.Entities;
 public class Customer : BaseEntity
 {
     public string NationalId { get; set; } = default!;
+    public string? Title { get; set; }                  // คำนำหน้า (นาย/นาง/นางสาว) — optional
+    public string FirstName { get; set; } = default!;
+    public string LastName { get; set; } = default!;
+    /// <summary>Derived display name, kept in sync from Title/FirstName/LastName via <see cref="SyncFullName"/>.</summary>
     public string FullName { get; set; } = default!;
+    public DateOnly? BirthDate { get; set; }
     public string? Phone { get; set; }
     public string? Email { get; set; }
+
+    // Address: free-text line + optional references to the geography master (all nullable).
+    public string? AddressLine { get; set; }
+    public long? ProvinceId { get; set; }
+    public long? DistrictId { get; set; }
+    public long? SubdistrictId { get; set; }
+    public long? PostalCodeId { get; set; }
+    public Province? Province { get; set; }
+    public District? District { get; set; }
+    public Subdistrict? Subdistrict { get; set; }
+    public PostalCode? PostalCode { get; set; }
+
     public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
+
+    /// <summary>Compose the display name from its parts: "[title ]first last".</summary>
+    public static string ComposeFullName(string? title, string firstName, string lastName)
+    {
+        var name = $"{firstName} {lastName}".Trim();
+        return string.IsNullOrWhiteSpace(title) ? name : $"{title} {name}".Trim();
+    }
+
+    /// <summary>Split a full name into (first, rest) on the first space — for backfilling parts.</summary>
+    public static (string FirstName, string LastName) SplitName(string fullName)
+    {
+        var t = (fullName ?? string.Empty).Trim();
+        var i = t.IndexOf(' ');
+        return i < 0 ? (t, string.Empty) : (t[..i], t[(i + 1)..].Trim());
+    }
+
+    /// <summary>Refresh <see cref="FullName"/> from the current Title/FirstName/LastName.</summary>
+    public void SyncFullName() => FullName = ComposeFullName(Title, FirstName, LastName);
 }
 
 public class Vehicle : BaseEntity

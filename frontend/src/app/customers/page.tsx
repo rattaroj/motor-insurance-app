@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Plus } from 'lucide-react';
-import { useGetCustomersQuery, useCreateCustomerMutation, type CustomerDto } from '@/lib/api/insuranceApi';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { useGetCustomersQuery, useDeleteCustomerMutation, type CustomerDto } from '@/lib/api/insuranceApi';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/data-table';
 import {
@@ -14,36 +15,28 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Can } from '@/components/can';
 import { P } from '@/lib/auth/permissions';
 import { apiError } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
 
-const empty = { nationalId: '', fullName: '', phone: '', email: '' };
 const PAGE_SIZE = 10;
 
 export default function CustomersPage() {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const search = useDebouncedValue(searchInput, 300);
   const { data, isFetching } = useGetCustomersQuery({ page, pageSize: PAGE_SIZE, search });
-  const [createCustomer, { isLoading: saving }] = useCreateCustomerMutation();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(empty);
+  const [deleteCustomer, { isLoading: deleting }] = useDeleteCustomerMutation();
+  const [deleteTarget, setDeleteTarget] = useState<CustomerDto | null>(null);
 
-  const submit = async () => {
+  const submitDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await createCustomer({
-        nationalId: form.nationalId,
-        fullName: form.fullName,
-        phone: form.phone || undefined,
-        email: form.email || undefined,
-      }).unwrap();
-      toast.success('เพิ่มลูกค้าแล้ว');
-      setOpen(false);
-      setForm(empty);
+      await deleteCustomer(deleteTarget.id).unwrap();
+      toast.success('ลบลูกค้าแล้ว');
+      setDeleteTarget(null);
     } catch (e) {
       toast.error(apiError(e));
     }
@@ -57,7 +50,7 @@ export default function CustomersPage() {
           <p className="text-sm text-muted-foreground">จัดการข้อมูลผู้เอาประกัน</p>
         </div>
         <Can permission={P.CustomerWrite}>
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={() => router.push('/customers/new')}>
             <Plus /> เพิ่มลูกค้า
           </Button>
         </Can>
@@ -83,52 +76,41 @@ export default function CustomersPage() {
           { header: 'ชื่อ-นามสกุล', cell: (c) => c.fullName },
           { header: 'โทรศัพท์', cell: (c) => c.phone ?? '-' },
           { header: 'อีเมล', cell: (c) => c.email ?? '-' },
+          { header: 'จังหวัด', cell: (c) => c.provinceName ?? '-' },
+          {
+            header: 'จัดการ',
+            className: 'text-right',
+            cell: (c) => (
+              <Can permission={P.CustomerWrite}>
+                <div className="flex justify-end gap-1">
+                  <Button size="sm" variant="ghost" onClick={() => router.push(`/customers/${c.id}/edit`)}>
+                    <Pencil />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setDeleteTarget(c)}>
+                    <Trash2 className="text-destructive" />
+                  </Button>
+                </div>
+              </Can>
+            ),
+          },
         ]}
       />
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      {/* Delete confirm */}
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>เพิ่มลูกค้า</DialogTitle>
-            <DialogDescription>กรอกข้อมูลผู้เอาประกันรายใหม่</DialogDescription>
+            <DialogTitle>ลบลูกค้า</DialogTitle>
+            <DialogDescription>
+              ต้องการลบ {deleteTarget?.fullName} ({deleteTarget?.nationalId}) หรือไม่? ลบได้เฉพาะลูกค้าที่ยังไม่มีรถ/ใบเสนอราคา/กรมธรรม์
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="nationalId" required>เลขบัตรประชาชน (13 หลัก)</Label>
-              <Input
-                id="nationalId"
-                value={form.nationalId}
-                onChange={(e) => setForm({ ...form, nationalId: e.target.value })}
-                maxLength={13}
-                placeholder="1100000000001"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="fullName" required>ชื่อ-นามสกุล</Label>
-              <Input
-                id="fullName"
-                value={form.fullName}
-                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                placeholder="สมชาย ใจดี"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">โทรศัพท์</Label>
-                <Input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">อีเมล</Label>
-                <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              </div>
-            </div>
-          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
               ยกเลิก
             </Button>
-            <Button onClick={submit} disabled={saving || !form.nationalId || !form.fullName}>
-              {saving ? 'กำลังบันทึก…' : 'บันทึก'}
+            <Button variant="destructive" onClick={submitDelete} disabled={deleting}>
+              {deleting ? 'กำลังลบ…' : 'ลบ'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -73,7 +73,7 @@ public class PolicyIssuanceSliceTests
         var clock = new FixedClock();
         var docNo = new FakeDocNo();
 
-        db.Customers.Add(new Customer { Id = 1, NationalId = "1100000000001", FullName = "สมชาย ทดสอบ" });
+        db.Customers.Add(new Customer { Id = 1, NationalId = "1100000000001", FirstName = "สมชาย", LastName = "ทดสอบ", FullName = "สมชาย ทดสอบ" });
         db.Vehicles.Add(new Vehicle { Id = 1, CustomerId = 1, RegistrationNo = "กก1234", Province = "กทม", ModelYearId = 1 });
         await db.SaveChangesAsync();
 

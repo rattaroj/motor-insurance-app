@@ -109,4 +109,26 @@
       DROP TABLE IF EXISTS province;
     </rollback>
   </changeSet>
+
+  <changeSet id="V012-customer-address" author="rattaroj.nit">
+    <!-- splitStatements="true": the FK constraints reference columns added by the preceding
+         ALTER, which must be in an earlier batch for SQL Server's name resolution. -->
+    <sqlFile path="./scripts/V012__customer_address.sql" relativeToChangelogFile="true" splitStatements="true"/>
+    <rollback>
+      ALTER TABLE customer DROP CONSTRAINT fk_customer_postal_code;
+      ALTER TABLE customer DROP CONSTRAINT fk_customer_subdistrict;
+      ALTER TABLE customer DROP CONSTRAINT fk_customer_district;
+      ALTER TABLE customer DROP CONSTRAINT fk_customer_province;
+      ALTER TABLE customer DROP COLUMN address_line, province_id, district_id, subdistrict_id, postal_code_id;
+    </rollback>
+  </changeSet>
+
+  <changeSet id="V013-customer-name-split" author="rattaroj.nit">
+    <!-- splitStatements="true": the backfill UPDATE references the just-added columns,
+         which must be in an earlier batch for SQL Server's name resolution. -->
+    <sqlFile path="./scripts/V013__customer_name_split.sql" relativeToChangelogFile="true" splitStatements="true"/>
+    <rollback>
+      ALTER TABLE customer DROP COLUMN title, first_name, last_name, birth_date;
+    </rollback>
+  </changeSet>
 </databaseChangeLog>

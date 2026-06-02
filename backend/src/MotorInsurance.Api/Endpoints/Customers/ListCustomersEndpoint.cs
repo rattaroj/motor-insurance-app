@@ -7,7 +7,15 @@ using Perms = MotorInsurance.Application.Common.Authorization.Permissions;
 
 namespace MotorInsurance.Api.Endpoints.Customers;
 
-public record CustomerDto(long Id, string NationalId, string FullName, string? Phone, string? Email);
+public record CustomerDto(
+    long Id, string NationalId,
+    string? Title, string FirstName, string LastName, string FullName, DateOnly? BirthDate,
+    string? Phone, string? Email,
+    string? AddressLine,
+    long? ProvinceId, string? ProvinceName,
+    long? DistrictId, string? DistrictName,
+    long? SubdistrictId, string? SubdistrictName,
+    long? PostalCodeId, string? PostalCode);
 
 public class ListCustomersRequest
 {
@@ -44,7 +52,15 @@ public class ListCustomersEndpoint : Endpoint<ListCustomersRequest, PagedResult<
 
         Response = await query
             .OrderByDescending(c => c.Id)
-            .Select(c => new CustomerDto(c.Id, c.NationalId, c.FullName, c.Phone, c.Email))
+            .Select(c => new CustomerDto(
+                c.Id, c.NationalId,
+                c.Title, c.FirstName, c.LastName, c.FullName, c.BirthDate,
+                c.Phone, c.Email,
+                c.AddressLine,
+                c.ProvinceId, c.Province != null ? c.Province.NameTh : null,
+                c.DistrictId, c.District != null ? c.District.NameTh : null,
+                c.SubdistrictId, c.Subdistrict != null ? c.Subdistrict.NameTh : null,
+                c.PostalCodeId, c.PostalCode != null ? c.PostalCode.Code : null))
             .ToPagedResultAsync(r.Page, r.PageSize, ct);
     }
 }

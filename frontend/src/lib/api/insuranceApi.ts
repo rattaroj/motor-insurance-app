@@ -12,12 +12,37 @@ export type PolicyStatus = 'Draft' | 'Quoted' | 'Issued' | 'Active' | 'Cancelled
 export type ClaimStatus = 'Filed' | 'UnderReview' | 'Assessment' | 'Approved' | 'Rejected' | 'Paid' | 'Closed';
 export type CoverageType = 'Type1' | 'Type2Plus' | 'Type3Plus' | 'Type3';
 
+/** Common Thai honorific titles (คำนำหน้า) for the customer title select. */
+export const TITLE_OPTIONS = ['นาย', 'นาง', 'นางสาว'] as const;
+
 export interface CustomerDto {
   id: number;
   nationalId: string;
+  title: string | null;
+  firstName: string;
+  lastName: string;
   fullName: string;
+  birthDate: string | null;
   phone: string | null;
   email: string | null;
+  addressLine: string | null;
+  provinceId: number | null;
+  provinceName: string | null;
+  districtId: number | null;
+  districtName: string | null;
+  subdistrictId: number | null;
+  subdistrictName: string | null;
+  postalCodeId: number | null;
+  postalCode: string | null;
+}
+
+/** Address fields sent on customer create/update — all optional. */
+export interface CustomerAddressInput {
+  addressLine?: string;
+  provinceId?: number;
+  districtId?: number;
+  subdistrictId?: number;
+  postalCodeId?: number;
 }
 
 /** Submodel fuel type — mirrors backend Powertrain enum (serialized as its C# name). */
@@ -268,11 +293,42 @@ export const insuranceApi = createApi({
       query: (a) => `customers?${qs({ page: a?.page, pageSize: a?.pageSize, search: a?.search })}`,
       providesTags: ['Customer'],
     }),
+    getCustomer: build.query<CustomerDto, number>({
+      query: (id) => `customers/${id}`,
+      providesTags: (_r, _e, id) => [{ type: 'Customer', id }],
+    }),
     createCustomer: build.mutation<
       { id: number },
-      { nationalId: string; fullName: string; phone?: string; email?: string }
+      {
+        nationalId: string;
+        title?: string;
+        firstName: string;
+        lastName: string;
+        birthDate?: string;
+        phone?: string;
+        email?: string;
+      } & CustomerAddressInput
     >({
       query: (body) => ({ url: 'customers', method: 'POST', body }),
+      invalidatesTags: ['Customer'],
+    }),
+    updateCustomer: build.mutation<
+      void,
+      {
+        id: number;
+        title?: string;
+        firstName: string;
+        lastName: string;
+        birthDate?: string;
+        phone?: string;
+        email?: string;
+      } & CustomerAddressInput
+    >({
+      query: ({ id, ...body }) => ({ url: `customers/${id}`, method: 'PUT', body }),
+      invalidatesTags: ['Customer'],
+    }),
+    deleteCustomer: build.mutation<void, number>({
+      query: (id) => ({ url: `customers/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Customer'],
     }),
 
@@ -570,7 +626,10 @@ export const {
   useLogoutMutation,
   useGetMeQuery,
   useGetCustomersQuery,
+  useGetCustomerQuery,
   useCreateCustomerMutation,
+  useUpdateCustomerMutation,
+  useDeleteCustomerMutation,
   useGetVehiclesQuery,
   useCreateVehicleMutation,
   useGetVehicleBrandsQuery,
