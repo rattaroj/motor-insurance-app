@@ -31,7 +31,9 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<PostalCode> PostalCodes => Set<PostalCode>();
     public DbSet<Subdistrict> Subdistricts => Set<Subdistrict>();
     public DbSet<Quotation> Quotations => Set<Quotation>();
+    public DbSet<QuotationDriver> QuotationDrivers => Set<QuotationDriver>();
     public DbSet<Policy> Policies => Set<Policy>();
+    public DbSet<Endorsement> Endorsements => Set<Endorsement>();
     public DbSet<Claim> Claims => Set<Claim>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<AppUser> Users => Set<AppUser>();

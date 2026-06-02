@@ -140,6 +140,34 @@ export interface PolicyDto {
   previousPolicyId: number | null;
 }
 
+export interface DriverInput {
+  fullName: string;
+  nationalId: string;
+  idCardImagePath: string;
+}
+
+export interface PolicyDriverDto {
+  fullName: string;
+  nationalId: string;
+  idCardImagePath: string;
+}
+
+export interface EndorsementDto {
+  endorsementNo: string;
+  fieldName: string;
+  oldValue: string | null;
+  newValue: string | null;
+  effectiveDate: string;
+  note: string | null;
+  createdAt: string;
+}
+
+/** Policy detail = the list DTO plus named drivers and endorsement history. */
+export interface PolicyDetailDto extends PolicyDto {
+  drivers: PolicyDriverDto[];
+  endorsements: EndorsementDto[];
+}
+
 export interface PolicyHistoryDto {
   status: string;
   premium: number;
@@ -196,6 +224,9 @@ export interface DashboardSummary {
 }
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api';
+
+/** Absolute URL for an uploaded file (served from the host root, not under /api). */
+export const fileUrl = (path: string) => `${baseUrl.replace(/\/api\/?$/, '')}/${path}`;
 
 /** Build a query string, skipping undefined/null/empty values. */
 const qs = (params: Record<string, string | number | undefined | null>) => {
@@ -330,6 +361,15 @@ export const insuranceApi = createApi({
     deleteCustomer: build.mutation<void, number>({
       query: (id) => ({ url: `customers/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Customer'],
+    }),
+
+    // ---------- Uploads ----------
+    uploadIdCard: build.mutation<{ path: string }, File>({
+      query: (file) => {
+        const form = new FormData();
+        form.append('file', file);
+        return { url: 'uploads/id-card', method: 'POST', body: form };
+      },
     }),
 
     // ---------- Vehicles ----------
@@ -510,7 +550,13 @@ export const insuranceApi = createApi({
     }),
     createQuotation: build.mutation<
       { id: number },
-      { customerId: number; vehicleId: number; coverageType: CoverageType; sumInsured: number }
+      {
+        customerId: number;
+        vehicleId: number;
+        coverageType: CoverageType;
+        sumInsured: number;
+        drivers: DriverInput[];
+      }
     >({
       query: (body) => ({ url: 'quotations', method: 'POST', body }),
       invalidatesTags: ['Quotation'],
@@ -524,7 +570,7 @@ export const insuranceApi = createApi({
       query: (a) => `policies?${qs({ page: a.page, pageSize: a.pageSize, status: a.status, search: a.search })}`,
       providesTags: ['Policy'],
     }),
-    getPolicy: build.query<PolicyDto, number>({
+    getPolicy: build.query<PolicyDetailDto, number>({
       query: (id) => `policies/${id}`,
       providesTags: (_r, _e, id) => [{ type: 'Policy', id }],
     }),
@@ -551,6 +597,22 @@ export const insuranceApi = createApi({
         body: { adjustedSumInsured: adjustedSumInsured ?? null },
       }),
       invalidatesTags: ['Policy', 'Payment'],
+    }),
+    createEndorsement: build.mutation<
+      { endorsementNos: string[] },
+      { policyId: number; fullName?: string; phone?: string; email?: string; effectiveDate: string; note?: string }
+    >({
+      query: ({ policyId, ...body }) => ({
+        url: `policies/${policyId}/endorsements`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (_r, _e, { policyId }) => [
+        'Customer',
+        'Policy',
+        { type: 'Policy', id: policyId },
+        { type: 'PolicyHistory', id: policyId },
+      ],
     }),
 
     // ---------- Payments ----------
@@ -630,6 +692,7 @@ export const {
   useCreateCustomerMutation,
   useUpdateCustomerMutation,
   useDeleteCustomerMutation,
+  useUploadIdCardMutation,
   useGetVehiclesQuery,
   useCreateVehicleMutation,
   useGetVehicleBrandsQuery,
@@ -673,6 +736,7 @@ export const {
   useActivatePolicyMutation,
   useCancelPolicyMutation,
   useRenewPolicyMutation,
+  useCreateEndorsementMutation,
   useGetPaymentsQuery,
   useSettlePaymentMutation,
   useGetClaimsQuery,

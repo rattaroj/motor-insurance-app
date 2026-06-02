@@ -247,6 +247,44 @@ public class QuotationConfiguration : IEntityTypeConfiguration<Quotation>
     }
 }
 
+public class QuotationDriverConfiguration : IEntityTypeConfiguration<QuotationDriver>
+{
+    public void Configure(EntityTypeBuilder<QuotationDriver> b)
+    {
+        b.ToTable("quotation_driver");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id");
+        b.Property(x => x.QuotationId).HasColumnName("quotation_id");
+        b.Property(x => x.FullName).HasColumnName("full_name").HasMaxLength(200).IsRequired();
+        b.Property(x => x.NationalId).HasColumnName("national_id").HasMaxLength(13).IsRequired();
+        b.Property(x => x.IdCardImagePath).HasColumnName("id_card_image_path").HasMaxLength(400).IsRequired();
+        b.Property(x => x.CreatedAt).HasColumnName("created_at");
+        b.HasOne(x => x.Quotation).WithMany(q => q.Drivers)
+            .HasForeignKey(x => x.QuotationId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class EndorsementConfiguration : IEntityTypeConfiguration<Endorsement>
+{
+    public void Configure(EntityTypeBuilder<Endorsement> b)
+    {
+        b.ToTable("endorsement");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id");
+        b.Property(x => x.EndorsementNo).HasColumnName("endorsement_no").HasMaxLength(30).IsRequired();
+        b.Property(x => x.PolicyId).HasColumnName("policy_id");
+        b.Property(x => x.FieldName).HasColumnName("field_name").HasMaxLength(50).IsRequired();
+        b.Property(x => x.OldValue).HasColumnName("old_value").HasMaxLength(500);
+        b.Property(x => x.NewValue).HasColumnName("new_value").HasMaxLength(500);
+        b.Property(x => x.EffectiveDate).HasColumnName("effective_date");
+        b.Property(x => x.Note).HasColumnName("note").HasMaxLength(500);
+        b.Property(x => x.CreatedAt).HasColumnName("created_at");
+        b.HasIndex(x => x.EndorsementNo).IsUnique();
+        b.HasOne(x => x.Policy).WithMany(p => p.Endorsements)
+            .HasForeignKey(x => x.PolicyId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 public class PolicyConfiguration : IEntityTypeConfiguration<Policy>
 {
     public void Configure(EntityTypeBuilder<Policy> b)

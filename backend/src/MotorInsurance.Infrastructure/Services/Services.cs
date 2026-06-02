@@ -80,6 +80,54 @@ public class DocumentNumberGenerator : IDocumentNumberGenerator
     }
 }
 
+/// <summary>
+/// Saves uploaded images to the local filesystem under {webRoot}/uploads/idcards and
+/// returns the relative path used to serve them (via UseStaticFiles). Dev-grade storage:
+/// for production prefer blob storage + a permission-gated streaming endpoint.
+/// </summary>
+public class LocalFileStorage : IFileStorage
+{
+    private const long MaxBytes = 5 * 1024 * 1024;   // 5 MB
+    private const string RelativeDir = "uploads/idcards";
+
+    private static readonly Dictionary<string, string> Extensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["image/jpeg"] = ".jpg",
+        ["image/png"] = ".png",
+    };
+
+    private readonly string _webRoot;
+    public LocalFileStorage(string webRoot) => _webRoot = webRoot;
+
+    public bool IsAllowed(string? contentType) =>
+        contentType is not null && Extensions.ContainsKey(contentType);
+
+    public async Task<string> SaveAsync(Stream content, string contentType, CancellationToken ct = default)
+    {
+        if (!Extensions.TryGetValue(contentType, out var ext))
+            throw new ArgumentException($"Unsupported content type '{contentType}'.", nameof(contentType));
+
+        var dir = Path.Combine(_webRoot, "uploads", "idcards");
+        Directory.CreateDirectory(dir);
+
+        var fileName = $"{Guid.NewGuid():N}{ext}";
+        var fullPath = Path.Combine(dir, fileName);
+
+        await using (var fs = new FileStream(fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+        {
+            await content.CopyToAsync(fs, ct);
+            if (fs.Length > MaxBytes)
+            {
+                fs.Close();
+                File.Delete(fullPath);
+                throw new ArgumentException("File exceeds the 5 MB limit.", nameof(content));
+            }
+        }
+
+        return $"{RelativeDir}/{fileName}";
+    }
+}
+
 /// <summary>Reads temporal policy history via the SQL Server TemporalAll() API.</summary>
 public class PolicyHistoryReader : IPolicyHistoryReader
 {

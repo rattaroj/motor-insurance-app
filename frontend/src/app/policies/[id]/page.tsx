@@ -3,7 +3,7 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Plus, Wallet } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Plus, Wallet, FileSignature } from 'lucide-react';
 import {
   useGetPolicyQuery,
   useGetPolicyHistoryQuery,
@@ -14,6 +14,8 @@ import {
   useRenewPolicyMutation,
   useSettlePaymentMutation,
   useFileClaimMutation,
+  useCreateEndorsementMutation,
+  fileUrl,
 } from '@/lib/api/insuranceApi';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
@@ -33,6 +35,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Can } from '@/components/can';
+import { ImageGallery } from '@/components/image-preview';
 import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDate, fmtDateTime } from '@/lib/utils';
 
@@ -52,6 +55,7 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
   const [renew, { isLoading: renewing }] = useRenewPolicyMutation();
   const [settle, { isLoading: settling }] = useSettlePaymentMutation();
   const [fileClaim, { isLoading: filing }] = useFileClaimMutation();
+  const [endorse, { isLoading: endorsing }] = useCreateEndorsementMutation();
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState('');
@@ -59,6 +63,8 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
   const [referenceNo, setReferenceNo] = useState('');
   const [claimOpen, setClaimOpen] = useState(false);
   const [claimForm, setClaimForm] = useState({ incidentDate: today(), description: '', claimedAmount: '' });
+  const [endorseOpen, setEndorseOpen] = useState(false);
+  const [endorseForm, setEndorseForm] = useState({ fullName: '', phone: '', email: '', effectiveDate: today(), note: '' });
 
   const run = async (fn: () => Promise<unknown>, ok: string) => {
     try {
@@ -241,6 +247,78 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
         </CardContent>
       </Card>
 
+      {/* Named drivers */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">ผู้ขับขี่ระบุชื่อ</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {policy.drivers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">ไม่มีผู้ขับขี่ระบุชื่อ</p>
+          ) : (
+            <ImageGallery
+              items={policy.drivers.map((d) => ({
+                src: fileUrl(d.idCardImagePath),
+                alt: `บัตรประชาชน ${d.fullName}`,
+                title: d.fullName,
+                subtitle: d.nationalId,
+              }))}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Endorsements (สลักหลัง) */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="text-base">การสลักหลัง (แก้ไขข้อมูลลูกค้า)</CardTitle>
+          <Can permission={P.PolicyEndorse}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!['Issued', 'Active'].includes(policy.status)}
+              onClick={() => {
+                setEndorseForm({ fullName: policy.customerName, phone: '', email: '', effectiveDate: today(), note: '' });
+                setEndorseOpen(true);
+              }}
+            >
+              <FileSignature /> ทำสลักหลัง
+            </Button>
+          </Can>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>เลขที่สลักหลัง</TableHead>
+                <TableHead>รายการ</TableHead>
+                <TableHead>เดิม</TableHead>
+                <TableHead>ใหม่</TableHead>
+                <TableHead>มีผล</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {policy.endorsements.map((e, i) => (
+                <TableRow key={i}>
+                  <TableCell className="font-medium">{e.endorsementNo}</TableCell>
+                  <TableCell>{e.fieldName}</TableCell>
+                  <TableCell className="text-muted-foreground">{e.oldValue ?? '-'}</TableCell>
+                  <TableCell>{e.newValue ?? '-'}</TableCell>
+                  <TableCell>{fmtDate(e.effectiveDate)}</TableCell>
+                </TableRow>
+              ))}
+              {policy.endorsements.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    ยังไม่มีการสลักหลัง
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
       {/* History */}
       <Card>
         <CardHeader>
@@ -380,6 +458,91 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
               }}
             >
               แจ้งเคลม
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Endorsement dialog (สลักหลัง) */}
+      <Dialog open={endorseOpen} onOpenChange={setEndorseOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ทำสลักหลังกรมธรรม์</DialogTitle>
+            <DialogDescription>
+              แก้ไขข้อมูลผู้เอาประกัน {policy.customerName} — กรอกเฉพาะช่องที่ต้องการเปลี่ยน
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="endoName">ชื่อ-นามสกุล</Label>
+              <Input
+                id="endoName"
+                value={endorseForm.fullName}
+                onChange={(e) => setEndorseForm({ ...endorseForm, fullName: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="endoPhone">โทรศัพท์</Label>
+                <Input
+                  id="endoPhone"
+                  value={endorseForm.phone}
+                  onChange={(e) => setEndorseForm({ ...endorseForm, phone: e.target.value })}
+                  placeholder="ปล่อยว่างหากไม่เปลี่ยน"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endoEmail">อีเมล</Label>
+                <Input
+                  id="endoEmail"
+                  type="email"
+                  value={endorseForm.email}
+                  onChange={(e) => setEndorseForm({ ...endorseForm, email: e.target.value })}
+                  placeholder="ปล่อยว่างหากไม่เปลี่ยน"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="endoEff" required>วันที่มีผล</Label>
+              <Input
+                id="endoEff"
+                type="date"
+                value={endorseForm.effectiveDate}
+                onChange={(e) => setEndorseForm({ ...endorseForm, effectiveDate: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="endoNote">หมายเหตุ</Label>
+              <Textarea
+                id="endoNote"
+                value={endorseForm.note}
+                onChange={(e) => setEndorseForm({ ...endorseForm, note: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEndorseOpen(false)}>
+              ยกเลิก
+            </Button>
+            <Button
+              disabled={endorsing || !endorseForm.effectiveDate}
+              onClick={async () => {
+                const ok = await run(
+                  () =>
+                    endorse({
+                      policyId,
+                      fullName: endorseForm.fullName || undefined,
+                      phone: endorseForm.phone || undefined,
+                      email: endorseForm.email || undefined,
+                      effectiveDate: endorseForm.effectiveDate,
+                      note: endorseForm.note || undefined,
+                    }).unwrap(),
+                  'บันทึกการสลักหลังแล้ว',
+                );
+                if (ok) setEndorseOpen(false);
+              }}
+            >
+              บันทึกสลักหลัง
             </Button>
           </DialogFooter>
         </DialogContent>

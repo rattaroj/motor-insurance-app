@@ -6,9 +6,6 @@ import { toast } from 'sonner';
 import { Plus, FileSignature } from 'lucide-react';
 import {
   useGetQuotationsQuery,
-  useCreateQuotationMutation,
-  useGetCustomersQuery,
-  useGetVehiclesQuery,
   useIssuePolicyMutation,
   type CoverageType,
   type QuotationDto,
@@ -25,7 +22,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Can } from '@/components/can';
 import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDate } from '@/lib/utils';
@@ -38,7 +34,6 @@ const COVERAGES: { value: CoverageType; label: string }[] = [
   { value: 'Type3', label: 'ชั้น 3' },
 ];
 
-const emptyCreate = { customerId: '', vehicleId: '', coverageType: '' as CoverageType | '', sumInsured: '' };
 const today = () => new Date().toISOString().slice(0, 10);
 const PAGE_SIZE = 10;
 
@@ -48,36 +43,10 @@ export default function QuotationsPage() {
   const [searchInput, setSearchInput] = useState('');
   const search = useDebouncedValue(searchInput, 300);
   const { data, isFetching } = useGetQuotationsQuery({ page, pageSize: PAGE_SIZE, search });
-  const { data: customers } = useGetCustomersQuery({ pageSize: 100 });
-  const [createQuotation, { isLoading: creating }] = useCreateQuotationMutation();
   const [issuePolicy, { isLoading: issuing }] = useIssuePolicyMutation();
 
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(emptyCreate);
   const [issueFor, setIssueFor] = useState<QuotationDto | null>(null);
   const [effectiveDate, setEffectiveDate] = useState(today());
-
-  const { data: vehicles } = useGetVehiclesQuery(
-    { customerId: Number(form.customerId), pageSize: 100 },
-    { skip: !form.customerId },
-  );
-  const vehiclesOfCustomer = vehicles?.items ?? [];
-
-  const submitCreate = async () => {
-    try {
-      await createQuotation({
-        customerId: Number(form.customerId),
-        vehicleId: Number(form.vehicleId),
-        coverageType: form.coverageType as CoverageType,
-        sumInsured: Number(form.sumInsured),
-      }).unwrap();
-      toast.success('สร้างใบเสนอราคาแล้ว');
-      setOpen(false);
-      setForm(emptyCreate);
-    } catch (e) {
-      toast.error(apiError(e));
-    }
-  };
 
   const submitIssue = async () => {
     if (!issueFor) return;
@@ -99,7 +68,7 @@ export default function QuotationsPage() {
           <p className="text-sm text-muted-foreground">คำนวณเบี้ยและออกกรมธรรม์</p>
         </div>
         <Can permission={P.QuotationWrite}>
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={() => router.push('/quotations/new')}>
             <Plus /> สร้างใบเสนอราคา
           </Button>
         </Can>
@@ -148,96 +117,6 @@ export default function QuotationsPage() {
           },
         ]}
       />
-
-      {/* Create quotation */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>สร้างใบเสนอราคา</DialogTitle>
-            <DialogDescription>ระบบจะคำนวณเบี้ยให้อัตโนมัติตามชั้นความคุ้มครอง</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label required>ลูกค้า</Label>
-              <Select
-                value={form.customerId}
-                onValueChange={(v) => setForm({ ...form, customerId: v, vehicleId: '' })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="เลือกลูกค้า" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers?.items.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.fullName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label required>รถยนต์</Label>
-              <Select
-                value={form.vehicleId}
-                onValueChange={(v) => setForm({ ...form, vehicleId: v })}
-                disabled={!form.customerId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={form.customerId ? 'เลือกรถ' : 'เลือกลูกค้าก่อน'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {vehiclesOfCustomer.map((v) => (
-                    <SelectItem key={v.id} value={String(v.id)}>
-                      {v.registrationNo} · {v.brand} {v.model}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label required>ความคุ้มครอง</Label>
-                <Select
-                  value={form.coverageType}
-                  onValueChange={(v) => setForm({ ...form, coverageType: v as CoverageType })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="เลือกชั้น" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COVERAGES.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>
-                        {c.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sum" required>ทุนประกัน (บาท)</Label>
-                <Input
-                  id="sum"
-                  type="number"
-                  value={form.sumInsured}
-                  onChange={(e) => setForm({ ...form, sumInsured: e.target.value })}
-                  placeholder="500000"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              ยกเลิก
-            </Button>
-            <Button
-              onClick={submitCreate}
-              disabled={creating || !form.customerId || !form.vehicleId || !form.coverageType || !form.sumInsured}
-            >
-              {creating ? 'กำลังคำนวณ…' : 'สร้าง'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Issue policy */}
       <Dialog open={!!issueFor} onOpenChange={(o) => !o && setIssueFor(null)}>

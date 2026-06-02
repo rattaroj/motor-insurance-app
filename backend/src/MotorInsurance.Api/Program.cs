@@ -4,6 +4,7 @@ using FastEndpoints;
 using FastEndpoints.Swagger;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using MotorInsurance.Api;
 using MotorInsurance.Api.Authorization;
@@ -18,6 +19,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
+
+// Local file storage for uploaded driver ID-card images (served via UseStaticFiles below).
+var webRoot = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
+Directory.CreateDirectory(webRoot);
+builder.Services.AddScoped<IFileStorage>(_ => new LocalFileStorage(webRoot));
 
 // FastEndpoints (REPR) hosts every endpoint; NSwag generates the OpenAPI doc + UI.
 builder.Services.AddFastEndpoints();
@@ -73,6 +79,13 @@ builder.Services.AddCors(o => o.AddPolicy(CorsPolicy, p => p
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+// Serve uploaded files (driver ID-card images). Explicit provider so it works even when
+// wwwroot did not exist at host-build time. Runs before auth: images are reachable by URL.
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(webRoot),
+});
 
 // Serve the OpenAPI doc + UI before auth so the global "require authenticated" fallback
 // policy doesn't gate /swagger (dev only).

@@ -21,7 +21,9 @@ public interface IAppDbContext
     DbSet<PostalCode> PostalCodes { get; }
     DbSet<Subdistrict> Subdistricts { get; }
     DbSet<Quotation> Quotations { get; }
+    DbSet<QuotationDriver> QuotationDrivers { get; }
     DbSet<Policy> Policies { get; }
+    DbSet<Endorsement> Endorsements { get; }
     DbSet<Claim> Claims { get; }
     DbSet<Payment> Payments { get; }
     DbSet<AppUser> Users { get; }
@@ -51,6 +53,19 @@ public interface IDateTimeProvider
 public interface IDocumentNumberGenerator
 {
     Task<string> NextAsync(string prefix, CancellationToken ct = default);
+}
+
+/// <summary>
+/// Stores uploaded files (e.g. driver ID-card images) and returns the relative path
+/// under which they are served. Implementation lives in Infrastructure.
+/// </summary>
+public interface IFileStorage
+{
+    /// <summary>True when the given content type is an allowed image type.</summary>
+    bool IsAllowed(string? contentType);
+
+    /// <summary>Persists the stream and returns the relative path (e.g. "uploads/idcards/{guid}.jpg").</summary>
+    Task<string> SaveAsync(Stream content, string contentType, CancellationToken ct = default);
 }
 
 /// <summary>

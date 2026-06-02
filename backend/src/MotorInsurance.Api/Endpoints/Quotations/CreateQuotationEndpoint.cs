@@ -11,7 +11,10 @@ using Perms = MotorInsurance.Application.Common.Authorization.Permissions;
 
 namespace MotorInsurance.Api.Endpoints.Quotations;
 
-public record CreateQuotationRequest(long CustomerId, long VehicleId, CoverageType CoverageType, decimal SumInsured);
+public record DriverInput(string FullName, string NationalId, string IdCardImagePath);
+public record CreateQuotationRequest(
+    long CustomerId, long VehicleId, CoverageType CoverageType, decimal SumInsured,
+    IReadOnlyList<DriverInput> Drivers);
 public record CreateQuotationResponse(long Id);
 
 public class CreateQuotationValidator : Validator<CreateQuotationRequest>
@@ -21,6 +24,15 @@ public class CreateQuotationValidator : Validator<CreateQuotationRequest>
         RuleFor(x => x.CustomerId).GreaterThan(0);
         RuleFor(x => x.VehicleId).GreaterThan(0);
         RuleFor(x => x.SumInsured).GreaterThan(0).LessThanOrEqualTo(50_000_000);
+        // New-law requirement: 1–5 named drivers, each with an ID-card image.
+        RuleFor(x => x.Drivers).NotEmpty().Must(d => d.Count <= 5)
+            .WithMessage("ต้องระบุผู้ขับขี่ 1–5 คน");
+        RuleForEach(x => x.Drivers).ChildRules(d =>
+        {
+            d.RuleFor(x => x.FullName).NotEmpty().MaximumLength(200);
+            d.RuleFor(x => x.NationalId).NotEmpty().Length(13);
+            d.RuleFor(x => x.IdCardImagePath).NotEmpty().MaximumLength(400);
+        });
     }
 }
 
@@ -60,6 +72,13 @@ public class CreateQuotationEndpoint : Endpoint<CreateQuotationRequest, CreateQu
             Premium = PremiumCalculator.Calculate(r.CoverageType, r.SumInsured),
             ValidUntil = DateOnly.FromDateTime(_clock.UtcNow.AddDays(30)),
             CreatedAt = _clock.UtcNow,
+            Drivers = r.Drivers.Select(d => new QuotationDriver
+            {
+                FullName = d.FullName,
+                NationalId = d.NationalId,
+                IdCardImagePath = d.IdCardImagePath,
+                CreatedAt = _clock.UtcNow,
+            }).ToList(),
         };
         _db.Quotations.Add(quotation);
         await _db.SaveChangesAsync(ct);

@@ -98,6 +98,22 @@
     </rollback>
   </changeSet>
 
+  <changeSet id="V009-driver-endorsement" author="rattaroj.nit">
+    <sqlFile path="./scripts/V009__driver_endorsement.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      DROP TABLE IF EXISTS endorsement;
+      DROP TABLE IF EXISTS quotation_driver;
+    </rollback>
+  </changeSet>
+
+  <changeSet id="V010-perm-policy-endorse" author="rattaroj.nit">
+    <sqlFile path="./scripts/V010__perm_policy_endorse.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      DELETE FROM role_permission WHERE permission_code = 'policy.endorse';
+      DELETE FROM permission WHERE code = 'policy.endorse';
+    </rollback>
+  </changeSet>
+
   <changeSet id="V011-thai-geography" author="rattaroj.nit">
     <!-- splitStatements="true": DDL (CREATE TABLE) must run in its own batch before the
          seed INSERTs that reference the just-created tables (SQL Server name resolution). -->

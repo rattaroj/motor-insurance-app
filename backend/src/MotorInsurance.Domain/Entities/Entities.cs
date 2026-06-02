@@ -143,6 +143,18 @@ public class Quotation : BaseEntity
     public DateOnly ValidUntil { get; set; }
     public Customer Customer { get; set; } = default!;
     public Vehicle Vehicle { get; set; } = default!;
+    // Named drivers (new-law requirement): 1–5 per quotation, each with an ID-card image.
+    public ICollection<QuotationDriver> Drivers { get; set; } = new List<QuotationDriver>();
+}
+
+/// <summary>A named driver declared on a quotation (max 5), with an attached ID-card image.</summary>
+public class QuotationDriver : BaseEntity
+{
+    public long QuotationId { get; set; }
+    public string FullName { get; set; } = default!;
+    public string NationalId { get; set; } = default!;
+    public string IdCardImagePath { get; set; } = default!;   // relative path, e.g. "uploads/idcards/xxxx.jpg"
+    public Quotation Quotation { get; set; } = default!;
 }
 
 public class Policy : AuditableEntity
@@ -165,6 +177,24 @@ public class Policy : AuditableEntity
     public Policy? PreviousPolicy { get; set; }
     public ICollection<Claim> Claims { get; set; } = new List<Claim>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+    public ICollection<Endorsement> Endorsements { get; set; } = new List<Endorsement>();
+}
+
+/// <summary>
+/// A policy endorsement (สลักหลัง): the formal record of a change to an issued/active
+/// policy. Editing the customer data of a customer who already holds a policy MUST go
+/// through one of these (one row per changed field), capturing old → new values.
+/// </summary>
+public class Endorsement : BaseEntity
+{
+    public string EndorsementNo { get; set; } = default!;      // END-YYYY-######
+    public long PolicyId { get; set; }
+    public string FieldName { get; set; } = default!;          // e.g. "FullName", "Phone", "Email"
+    public string? OldValue { get; set; }
+    public string? NewValue { get; set; }
+    public DateOnly EffectiveDate { get; set; }
+    public string? Note { get; set; }
+    public Policy Policy { get; set; } = default!;
 }
 
 public class Claim : AuditableEntity

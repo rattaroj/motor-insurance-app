@@ -15,6 +15,7 @@ export const P = {
   PolicyActivate: 'policy.activate',
   PolicyCancel: 'policy.cancel',
   PolicyRenew: 'policy.renew',
+  PolicyEndorse: 'policy.endorse',
   ClaimRead: 'claim.read',
   ClaimFile: 'claim.file',
   ClaimReview: 'claim.review',

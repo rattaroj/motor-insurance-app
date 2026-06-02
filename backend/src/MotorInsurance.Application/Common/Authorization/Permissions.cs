@@ -23,6 +23,7 @@ public static class Permissions
     public const string PolicyActivate = "policy.activate";
     public const string PolicyCancel = "policy.cancel";
     public const string PolicyRenew = "policy.renew";
+    public const string PolicyEndorse = "policy.endorse";
 
     public const string ClaimRead = "claim.read";
     public const string ClaimFile = "claim.file";
