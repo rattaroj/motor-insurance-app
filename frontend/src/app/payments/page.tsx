@@ -24,6 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Can } from '@/components/can';
+import { PromptPayButton } from '@/components/promptpay-button';
 import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDateTime, saveBlob } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
@@ -157,18 +158,23 @@ export default function PaymentsPage() {
             className: 'text-right',
             cell: (p) =>
               p.status === 'Pending' ? (
-                <Can permission={P.PaymentSettle}>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setSettleFor(p);
-                      setReferenceNo('');
-                    }}
-                  >
-                    <Wallet /> ชำระ
-                  </Button>
-                </Can>
+                <div className="flex justify-end gap-2">
+                  {p.direction === 'Inbound' && (
+                    <PromptPayButton paymentId={p.id} paymentNo={p.paymentNo} amount={p.amount} />
+                  )}
+                  <Can permission={P.PaymentSettle}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSettleFor(p);
+                        setReferenceNo('');
+                      }}
+                    >
+                      <Wallet /> ชำระ
+                    </Button>
+                  </Can>
+                </div>
               ) : p.status === 'Paid' && p.direction === 'Inbound' ? (
                 <Button size="sm" variant="ghost" onClick={() => downloadReceipt(p.id, p.paymentNo)}>
                   <Receipt /> ใบเสร็จ

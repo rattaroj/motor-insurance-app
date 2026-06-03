@@ -779,6 +779,10 @@ export const insuranceApi = createApi({
     getPaymentReceipt: build.mutation<Blob, number>({
       query: (id) => ({ url: `payments/${id}/receipt`, responseHandler: (r) => r.blob() }),
     }),
+    /** PromptPay QR PNG for a pending inbound premium, as a Blob. */
+    getPromptPayQr: build.mutation<Blob, number>({
+      query: (id) => ({ url: `payments/${id}/promptpay-qr`, responseHandler: (r) => r.blob() }),
+    }),
 
     // ---------- Claims ----------
     getClaims: build.query<
@@ -882,6 +886,7 @@ export const {
   useGetPolicyHistoryQuery,
   useGetPolicyDocumentMutation,
   useGetPaymentReceiptMutation,
+  useGetPromptPayQrMutation,
   useIssuePolicyMutation,
   useActivatePolicyMutation,
   useCancelPolicyMutation,

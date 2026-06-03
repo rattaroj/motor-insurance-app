@@ -37,6 +37,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Can } from '@/components/can';
+import { PromptPayButton } from '@/components/promptpay-button';
 import { ImageGallery } from '@/components/image-preview';
 import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDate, fmtDateTime, saveBlob } from '@/lib/utils';
@@ -227,25 +228,30 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{fmtBaht(p.amount)}</TableCell>
                   <TableCell className="text-right">
-                    {p.status === 'Pending' && (
-                      <Can permission={P.PaymentSettle}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSettleFor(p.id);
-                            setReferenceNo('');
-                          }}
-                        >
-                          <Wallet /> ชำระ
+                    <div className="flex justify-end gap-2">
+                      {p.status === 'Pending' && p.direction === 'Inbound' && (
+                        <PromptPayButton paymentId={p.id} paymentNo={p.paymentNo} amount={p.amount} />
+                      )}
+                      {p.status === 'Pending' && (
+                        <Can permission={P.PaymentSettle}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSettleFor(p.id);
+                              setReferenceNo('');
+                            }}
+                          >
+                            <Wallet /> ชำระ
+                          </Button>
+                        </Can>
+                      )}
+                      {p.status === 'Paid' && p.direction === 'Inbound' && (
+                        <Button size="sm" variant="ghost" onClick={() => downloadReceipt(p.id, p.paymentNo)}>
+                          <Receipt /> ใบเสร็จ
                         </Button>
-                      </Can>
-                    )}
-                    {p.status === 'Paid' && p.direction === 'Inbound' && (
-                      <Button size="sm" variant="ghost" onClick={() => downloadReceipt(p.id, p.paymentNo)}>
-                        <Receipt /> ใบเสร็จ
-                      </Button>
-                    )}
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
