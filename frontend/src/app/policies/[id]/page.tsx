@@ -412,6 +412,11 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
           <div className="space-y-2">
             <Label htmlFor="reason" required>เหตุผล</Label>
             <Textarea id="reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+            {policy.status === 'Active' && (
+              <p className="text-xs text-muted-foreground">
+                กรมธรรม์ที่คุ้มครองอยู่จะคำนวณคืนเบี้ยตามสัดส่วนวันที่เหลือ (pro-rata) เป็นรายการจ่ายออกรอชำระ
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCancelOpen(false)}>
@@ -421,8 +426,18 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
               variant="destructive"
               disabled={cancelling || !reason}
               onClick={async () => {
-                const ok = await run(() => cancel({ id: policyId, reason }).unwrap(), 'ยกเลิกกรมธรรม์แล้ว');
-                if (ok) setCancelOpen(false);
+                try {
+                  const res = await cancel({ id: policyId, reason }).unwrap();
+                  toast.success('ยกเลิกกรมธรรม์แล้ว', {
+                    description:
+                      res.refundAmount > 0
+                        ? `คืนเบี้ย (pro-rata) ${fmtBaht(res.refundAmount)} — ${res.refundPaymentNo}`
+                        : undefined,
+                  });
+                  setCancelOpen(false);
+                } catch (e) {
+                  toast.error(apiError(e));
+                }
               }}
             >
               ยืนยันยกเลิก

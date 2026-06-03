@@ -701,9 +701,14 @@ export const insuranceApi = createApi({
       query: (id) => ({ url: `policies/${id}/activate`, method: 'POST' }),
       invalidatesTags: (_r, _e, id) => ['Policy', { type: 'Policy', id }, { type: 'PolicyHistory', id }],
     }),
-    cancelPolicy: build.mutation<void, { id: number; reason: string }>({
+    cancelPolicy: build.mutation<
+      { refundAmount: number; refundPaymentNo: string | null },
+      { id: number; reason: string }
+    >({
       query: ({ id, reason }) => ({ url: `policies/${id}/cancel`, method: 'POST', body: { reason } }),
-      invalidatesTags: (_r, _e, { id }) => ['Policy', { type: 'Policy', id }, { type: 'PolicyHistory', id }],
+      invalidatesTags: (_r, _e, { id }) => [
+        'Policy', 'Payment', { type: 'Policy', id }, { type: 'PolicyHistory', id },
+      ],
     }),
     renewPolicy: build.mutation<{ id: number }, { policyId: number; adjustedSumInsured?: number }>({
       query: ({ policyId, adjustedSumInsured }) => ({
