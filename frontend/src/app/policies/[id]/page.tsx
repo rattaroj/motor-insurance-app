@@ -40,7 +40,7 @@ import { Can } from '@/components/can';
 import { PromptPayButton } from '@/components/promptpay-button';
 import { ImageGallery } from '@/components/image-preview';
 import { P } from '@/lib/auth/permissions';
-import { apiError, fmtBaht, fmtDate, fmtDateTime, saveBlob } from '@/lib/utils';
+import { apiError, fmtBaht, fmtDate, fmtDateTime, saveUrl } from '@/lib/utils';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -84,8 +84,8 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
 
   const downloadPolicyPdf = async () => {
     try {
-      const blob = await getPolicyPdf(policyId).unwrap();
-      saveBlob(blob, `${policy?.policyNo ?? 'policy'}.pdf`);
+      const url = await getPolicyPdf(policyId).unwrap();
+      saveUrl(url, `${policy?.policyNo ?? 'policy'}.pdf`);
     } catch (e) {
       toast.error(apiError(e));
     }
@@ -93,8 +93,8 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
 
   const downloadReceipt = async (paymentId: number, paymentNo: string) => {
     try {
-      const blob = await getReceipt(paymentId).unwrap();
-      saveBlob(blob, `${paymentNo}.pdf`);
+      const url = await getReceipt(paymentId).unwrap();
+      saveUrl(url, `${paymentNo}.pdf`);
     } catch (e) {
       toast.error(apiError(e));
     }

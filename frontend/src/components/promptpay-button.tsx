@@ -23,8 +23,7 @@ export function PromptPayButton({ paymentId, paymentNo, amount }: { paymentId: n
   const load = async () => {
     setOpen(true);
     try {
-      const blob = await getQr(paymentId).unwrap();
-      setUrl(URL.createObjectURL(blob));
+      setUrl(await getQr(paymentId).unwrap());
     } catch (e) {
       toast.error(apiError(e));
       setOpen(false);

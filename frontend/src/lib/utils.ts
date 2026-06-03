@@ -14,9 +14,8 @@ export const fmtDate = (s?: string | null) =>
 export const fmtDateTime = (s?: string | null) =>
   s ? new Date(s).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
 
-/** Triggers a browser download of a Blob (e.g. a generated PDF) under the given filename. */
-export function saveBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
+/** Triggers a browser download of an object URL (e.g. a generated PDF) and revokes it. */
+export function saveUrl(url: string, filename: string) {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;

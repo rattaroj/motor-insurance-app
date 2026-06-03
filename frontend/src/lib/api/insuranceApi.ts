@@ -689,9 +689,10 @@ export const insuranceApi = createApi({
       query: (id) => `policies/${id}/history`,
       providesTags: (_r, _e, id) => [{ type: 'PolicyHistory', id }],
     }),
-    /** Policy schedule PDF (ตารางกรมธรรม์) as a Blob — goes through auth/refresh. */
-    getPolicyDocument: build.mutation<Blob, number>({
+    /** Policy schedule PDF (ตารางกรมธรรม์) → object URL (kept serializable in the store). */
+    getPolicyDocument: build.mutation<string, number>({
       query: (id) => ({ url: `policies/${id}/document`, responseHandler: (r) => r.blob() }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
     }),
     issuePolicy: build.mutation<{ id: number }, { quotationId: number; effectiveDate: string }>({
       query: (body) => ({ url: 'policies/issue', method: 'POST', body }),
@@ -775,13 +776,15 @@ export const insuranceApi = createApi({
       query: ({ id, referenceNo }) => ({ url: `payments/${id}/settle`, method: 'POST', body: { referenceNo } }),
       invalidatesTags: ['Payment', 'Policy', 'Claim'],
     }),
-    /** Premium receipt PDF (ใบเสร็จรับเงิน) as a Blob. */
-    getPaymentReceipt: build.mutation<Blob, number>({
+    /** Premium receipt PDF (ใบเสร็จรับเงิน) → object URL. */
+    getPaymentReceipt: build.mutation<string, number>({
       query: (id) => ({ url: `payments/${id}/receipt`, responseHandler: (r) => r.blob() }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
     }),
-    /** PromptPay QR PNG for a pending inbound premium, as a Blob. */
-    getPromptPayQr: build.mutation<Blob, number>({
+    /** PromptPay QR PNG for a pending inbound premium → object URL. */
+    getPromptPayQr: build.mutation<string, number>({
       query: (id) => ({ url: `payments/${id}/promptpay-qr`, responseHandler: (r) => r.blob() }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
     }),
 
     // ---------- Claims ----------

@@ -26,7 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Can } from '@/components/can';
 import { PromptPayButton } from '@/components/promptpay-button';
 import { P } from '@/lib/auth/permissions';
-import { apiError, fmtBaht, fmtDateTime, saveBlob } from '@/lib/utils';
+import { apiError, fmtBaht, fmtDateTime, saveUrl } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
 
 const PAGE_SIZE = 10;
@@ -65,8 +65,8 @@ export default function PaymentsPage() {
 
   const downloadReceipt = async (paymentId: number, paymentNo: string) => {
     try {
-      const blob = await getReceipt(paymentId).unwrap();
-      saveBlob(blob, `${paymentNo}.pdf`);
+      const url = await getReceipt(paymentId).unwrap();
+      saveUrl(url, `${paymentNo}.pdf`);
     } catch (e) {
       toast.error(apiError(e));
     }
