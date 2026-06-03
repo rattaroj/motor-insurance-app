@@ -1,0 +1,126 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { RefreshCw, BellRing, CheckCircle2 } from 'lucide-react';
+import {
+  useGetExpiringPoliciesQuery,
+  useRenewPolicyMutation,
+  useSendRenewalReminderMutation,
+} from '@/lib/api/insuranceApi';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Can } from '@/components/can';
+import { P } from '@/lib/auth/permissions';
+import { apiError, cn, fmtDate, fmtDateTime } from '@/lib/utils';
+
+export default function RenewalsPage() {
+  const router = useRouter();
+  const { data, isLoading } = useGetExpiringPoliciesQuery({ days: 60 });
+  const [renew, { isLoading: renewing }] = useRenewPolicyMutation();
+  const [remind, { isLoading: reminding }] = useSendRenewalReminderMutation();
+
+  const doRenew = async (policyId: number) => {
+    try {
+      const res = await renew({ policyId }).unwrap();
+      toast.success('สร้างกรมธรรม์ต่ออายุแล้ว');
+      router.push(`/policies/${res.id}`);
+    } catch (e) {
+      toast.error(apiError(e));
+    }
+  };
+
+  const doRemind = async (policyId: number) => {
+    try {
+      const res = await remind(policyId).unwrap();
+      toast.success('บันทึกการแจ้งเตือนแล้ว', { description: `${res.channel} → ${res.recipient}` });
+    } catch (e) {
+      toast.error(apiError(e));
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">ต่ออายุเชิงรุก</h1>
+        <p className="text-sm text-muted-foreground">กรมธรรม์ที่ใกล้หมดอายุภายใน 60 วัน และยังไม่ได้ต่ออายุ</p>
+      </div>
+
+      <Card>
+        <CardContent className="pt-6">
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>กรมธรรม์</TableHead>
+                  <TableHead>ลูกค้า</TableHead>
+                  <TableHead>ช่องทางติดต่อ</TableHead>
+                  <TableHead>หมดอายุ</TableHead>
+                  <TableHead className="text-center">เหลือ (วัน)</TableHead>
+                  <TableHead>แจ้งเตือนล่าสุด</TableHead>
+                  <TableHead className="text-right">จัดการ</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(data ?? []).map((r) => (
+                  <TableRow key={r.policyId}>
+                    <TableCell className="font-medium">{r.policyNo}</TableCell>
+                    <TableCell>{r.customerName}</TableCell>
+                    <TableCell className="text-muted-foreground">{r.customerEmail ?? r.customerPhone ?? '-'}</TableCell>
+                    <TableCell>{fmtDate(r.expiryDate)}</TableCell>
+                    <TableCell className="text-center">
+                      <span
+                        className={cn(
+                          'inline-block rounded-full px-2 py-0.5 text-xs font-medium tabular-nums',
+                          r.daysLeft <= 14 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700',
+                        )}
+                      >
+                        {r.daysLeft}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {r.lastRemindedAt ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-600">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> {fmtDateTime(r.lastRemindedAt)}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Can permission={P.PolicyRenew}>
+                          <Button size="sm" variant="ghost" disabled={reminding} onClick={() => doRemind(r.policyId)}>
+                            <BellRing /> แจ้งเตือน
+                          </Button>
+                        </Can>
+                        <Can permission={P.PolicyRenew}>
+                          <Button size="sm" variant="outline" disabled={renewing} onClick={() => doRenew(r.policyId)}>
+                            <RefreshCw /> ต่ออายุ
+                          </Button>
+                        </Can>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {(data ?? []).length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                      ไม่มีกรมธรรม์ที่ใกล้หมดอายุ
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

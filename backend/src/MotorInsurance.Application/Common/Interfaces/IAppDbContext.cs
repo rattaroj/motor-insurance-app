@@ -30,6 +30,7 @@ public interface IAppDbContext
     DbSet<Endorsement> Endorsements { get; }
     DbSet<Claim> Claims { get; }
     DbSet<Payment> Payments { get; }
+    DbSet<Notification> Notifications { get; }
     DbSet<AppUser> Users { get; }
     DbSet<Role> Roles { get; }
     DbSet<Permission> Permissions { get; }
@@ -51,6 +52,18 @@ public interface ICurrentUser
 public interface IDateTimeProvider
 {
     DateTime UtcNow { get; }
+}
+
+/// <summary>A message to deliver through some channel (Email/Sms/Line). Channel is informational.</summary>
+public record NotificationMessage(string Channel, string Recipient, string Subject, string Body);
+
+/// <summary>
+/// Delivers a notification. The default dev implementation logs it (delivery is recorded in the
+/// <c>notification</c> table by the caller); swap in real SMTP/LINE without touching call sites.
+/// </summary>
+public interface INotificationSender
+{
+    Task<bool> SendAsync(NotificationMessage message, CancellationToken ct = default);
 }
 
 /// <summary>Generates business document numbers (POL-2026-000001 etc.).</summary>

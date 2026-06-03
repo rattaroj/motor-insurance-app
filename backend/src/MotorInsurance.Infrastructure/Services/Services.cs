@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using MotorInsurance.Application.Common.Interfaces;
 using MotorInsurance.Application.Common.Models;
 using MotorInsurance.Infrastructure.Persistence;
@@ -158,6 +159,22 @@ public class PolicyHistoryReader : IPolicyHistoryReader
     }
 }
 
+/// <summary>
+/// Dev-grade notification sender: logs the message (the caller persists the record in the
+/// notification table). Replace with an SMTP/LINE implementation for real delivery.
+/// </summary>
+public class LoggingNotificationSender : INotificationSender
+{
+    private readonly ILogger<LoggingNotificationSender> _log;
+    public LoggingNotificationSender(ILogger<LoggingNotificationSender> log) => _log = log;
+
+    public Task<bool> SendAsync(NotificationMessage m, CancellationToken ct = default)
+    {
+        _log.LogInformation("NOTIFY [{Channel}] → {Recipient}: {Subject}", m.Channel, m.Recipient, m.Subject);
+        return Task.FromResult(true);
+    }
+}
+
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
@@ -170,6 +187,7 @@ public static class DependencyInjection
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IDocumentNumberGenerator, DocumentNumberGenerator>();
         services.AddScoped<IPolicyHistoryReader, PolicyHistoryReader>();
+        services.AddScoped<INotificationSender, LoggingNotificationSender>();
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddScoped<ICurrentUser, CurrentUser>();
 

@@ -200,6 +200,18 @@ export interface PolicyHistoryDto {
   validTo: string;
 }
 
+/** A policy in the proactive renewal worklist (expiring soon, not yet renewed). */
+export interface ExpiringPolicy {
+  policyId: number;
+  policyNo: string;
+  customerName: string;
+  customerEmail: string | null;
+  customerPhone: string | null;
+  expiryDate: string;
+  daysLeft: number;
+  lastRemindedAt: string | null;
+}
+
 export interface ClaimDto {
   id: number;
   claimNo: string;
@@ -340,6 +352,7 @@ export const insuranceApi = createApi({
     'Payment',
     'CustomerTitle',
     'Rider',
+    'Renewal',
     'VBrand',
     'VModel',
     'VSubmodel',
@@ -698,7 +711,18 @@ export const insuranceApi = createApi({
         method: 'POST',
         body: { adjustedSumInsured: adjustedSumInsured ?? null },
       }),
-      invalidatesTags: ['Policy', 'Payment'],
+      invalidatesTags: ['Policy', 'Payment', 'Renewal'],
+    }),
+    getExpiringPolicies: build.query<ExpiringPolicy[], { days?: number } | void>({
+      query: (a) => `renewals/expiring${a?.days ? `?days=${a.days}` : ''}`,
+      providesTags: ['Renewal'],
+    }),
+    sendRenewalReminder: build.mutation<
+      { notificationId: number; channel: string; recipient: string; status: string },
+      number
+    >({
+      query: (policyId) => ({ url: `renewals/${policyId}/remind`, method: 'POST' }),
+      invalidatesTags: ['Renewal'],
     }),
     createEndorsement: build.mutation<
       { endorsementNos: string[] },
@@ -857,6 +881,8 @@ export const {
   useActivatePolicyMutation,
   useCancelPolicyMutation,
   useRenewPolicyMutation,
+  useGetExpiringPoliciesQuery,
+  useSendRenewalReminderMutation,
   useCreateEndorsementMutation,
   useGetPaymentsQuery,
   useSettlePaymentMutation,

@@ -269,3 +269,18 @@ public class Payment : AuditableEntity
     public Policy? Policy { get; set; }
     public Claim? Claim { get; set; }
 }
+
+/// <summary>A persisted, auditable record of a notification sent (e.g. a renewal reminder).</summary>
+public class Notification
+{
+    public long Id { get; set; }
+    public long? PolicyId { get; set; }
+    public string Channel { get; set; } = default!;     // Email / Sms / Line / Log
+    public string Recipient { get; set; } = default!;
+    public string Subject { get; set; } = default!;
+    public string Body { get; set; } = default!;
+    public string Status { get; set; } = default!;       // Sent / Failed
+    public DateTime? SentAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public Policy? Policy { get; set; }
+}

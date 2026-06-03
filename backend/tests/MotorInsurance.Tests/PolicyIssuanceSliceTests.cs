@@ -37,6 +37,7 @@ public class PolicyIssuanceSliceTests
         public DbSet<Endorsement> Endorsements => Set<Endorsement>();
         public DbSet<Claim> Claims => Set<Claim>();
         public DbSet<Payment> Payments => Set<Payment>();
+        public DbSet<Notification> Notifications => Set<Notification>();
         public DbSet<AppUser> Users => Set<AppUser>();
         public DbSet<Role> Roles => Set<Role>();
         public DbSet<Permission> Permissions => Set<Permission>();

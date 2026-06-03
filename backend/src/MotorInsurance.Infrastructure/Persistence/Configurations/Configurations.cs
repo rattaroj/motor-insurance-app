@@ -439,3 +439,24 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .HasForeignKey(x => x.ClaimId).OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
+{
+    public void Configure(EntityTypeBuilder<Notification> b)
+    {
+        b.ToTable("notification");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id");
+        b.Property(x => x.PolicyId).HasColumnName("policy_id");
+        b.Property(x => x.Channel).HasColumnName("channel").HasMaxLength(20).IsRequired();
+        b.Property(x => x.Recipient).HasColumnName("recipient").HasMaxLength(200).IsRequired();
+        b.Property(x => x.Subject).HasColumnName("subject").HasMaxLength(200).IsRequired();
+        b.Property(x => x.Body).HasColumnName("body").HasMaxLength(2000).IsRequired();
+        b.Property(x => x.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
+        b.Property(x => x.SentAt).HasColumnName("sent_at");
+        b.Property(x => x.CreatedAt).HasColumnName("created_at");
+        b.HasIndex(x => x.PolicyId);
+        b.HasOne(x => x.Policy).WithMany()
+            .HasForeignKey(x => x.PolicyId).OnDelete(DeleteBehavior.Restrict);
+    }
+}

@@ -12,6 +12,7 @@ import {
   CreditCard,
   Database,
   BarChart3,
+  CalendarClock,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,7 @@ const nav: NavItem[] = [
   { href: '/vehicles', label: 'รถยนต์', icon: Car, permission: P.VehicleRead },
   { href: '/quotations', label: 'ใบเสนอราคา', icon: FileText, permission: P.QuotationRead },
   { href: '/policies', label: 'กรมธรรม์', icon: ShieldCheck, permission: P.PolicyRead },
+  { href: '/renewals', label: 'ต่ออายุ', icon: CalendarClock, permission: P.PolicyRenew },
   { href: '/claims', label: 'เคลม', icon: FileWarning, permission: P.ClaimRead },
   { href: '/payments', label: 'การชำระเงิน', icon: CreditCard, permission: P.PaymentRead },
   { href: '/reports', label: 'รายงาน', icon: BarChart3, permission: P.DashboardRead },

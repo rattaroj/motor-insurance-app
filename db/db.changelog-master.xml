@@ -169,4 +169,11 @@
       ALTER TABLE quotation DROP COLUMN ncb_percent, deductible, base_premium;
     </rollback>
   </changeSet>
+
+  <changeSet id="V016-notification" author="rattaroj.nit">
+    <sqlFile path="./scripts/V016__notification.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      DROP TABLE IF EXISTS notification;
+    </rollback>
+  </changeSet>
 </databaseChangeLog>
