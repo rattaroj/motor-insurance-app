@@ -11,6 +11,7 @@ import {
   FileWarning,
   CreditCard,
   Database,
+  BarChart3,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ const nav: NavItem[] = [
   { href: '/policies', label: 'กรมธรรม์', icon: ShieldCheck, permission: P.PolicyRead },
   { href: '/claims', label: 'เคลม', icon: FileWarning, permission: P.ClaimRead },
   { href: '/payments', label: 'การชำระเงิน', icon: CreditCard, permission: P.PaymentRead },
+  { href: '/reports', label: 'รายงาน', icon: BarChart3, permission: P.DashboardRead },
   { href: '/master', label: 'ข้อมูลหลัก', icon: Database, permission: P.LookupManage },
 ];
 

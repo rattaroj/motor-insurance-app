@@ -248,6 +248,24 @@ export interface DashboardSummary {
   paymentsPendingAmount: number;
 }
 
+export interface MonthPremium {
+  month: string;
+  premium: number;
+}
+export interface LabelCount {
+  label: string;
+  count: number;
+}
+export interface Analytics {
+  premiumWritten: number;
+  claimsPaid: number;
+  lossRatio: number;
+  premiumByMonth: MonthPremium[];
+  policiesByStatus: LabelCount[];
+  policiesByCoverage: LabelCount[];
+  claimsByStatus: LabelCount[];
+}
+
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api';
 
 /** Absolute URL for an uploaded file (served from the host root, not under /api). */
@@ -767,6 +785,10 @@ export const insuranceApi = createApi({
       query: () => 'dashboard/summary',
       providesTags: ['Customer', 'Vehicle', 'Quotation', 'Policy', 'Claim', 'Payment'],
     }),
+    getAnalytics: build.query<Analytics, void>({
+      query: () => 'reports/analytics',
+      providesTags: ['Policy', 'Claim', 'Payment'],
+    }),
   }),
 });
 
@@ -844,4 +866,5 @@ export const {
   useApproveClaimMutation,
   useRejectClaimMutation,
   useGetDashboardSummaryQuery,
+  useGetAnalyticsQuery,
 } = insuranceApi;
