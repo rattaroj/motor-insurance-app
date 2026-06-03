@@ -658,6 +658,10 @@ export const insuranceApi = createApi({
       query: (id) => `policies/${id}/history`,
       providesTags: (_r, _e, id) => [{ type: 'PolicyHistory', id }],
     }),
+    /** Policy schedule PDF (ตารางกรมธรรม์) as a Blob — goes through auth/refresh. */
+    getPolicyDocument: build.mutation<Blob, number>({
+      query: (id) => ({ url: `policies/${id}/document`, responseHandler: (r) => r.blob() }),
+    }),
     issuePolicy: build.mutation<{ id: number }, { quotationId: number; effectiveDate: string }>({
       query: (body) => ({ url: 'policies/issue', method: 'POST', body }),
       invalidatesTags: ['Policy', 'Quotation', 'Payment'],
@@ -723,6 +727,10 @@ export const insuranceApi = createApi({
     settlePayment: build.mutation<void, { id: number; referenceNo: string }>({
       query: ({ id, referenceNo }) => ({ url: `payments/${id}/settle`, method: 'POST', body: { referenceNo } }),
       invalidatesTags: ['Payment', 'Policy', 'Claim'],
+    }),
+    /** Premium receipt PDF (ใบเสร็จรับเงิน) as a Blob. */
+    getPaymentReceipt: build.mutation<Blob, number>({
+      query: (id) => ({ url: `payments/${id}/receipt`, responseHandler: (r) => r.blob() }),
     }),
 
     // ---------- Claims ----------
@@ -821,6 +829,8 @@ export const {
   useGetPoliciesQuery,
   useGetPolicyQuery,
   useGetPolicyHistoryQuery,
+  useGetPolicyDocumentMutation,
+  useGetPaymentReceiptMutation,
   useIssuePolicyMutation,
   useActivatePolicyMutation,
   useCancelPolicyMutation,

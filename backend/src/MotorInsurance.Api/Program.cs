@@ -17,6 +17,9 @@ using MotorInsurance.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// QuestPDF: Community license + embedded Thai font, for policy/receipt PDF generation.
+MotorInsurance.Api.Documents.PdfSetup.Configure();
+
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 

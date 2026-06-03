@@ -14,6 +14,18 @@ export const fmtDate = (s?: string | null) =>
 export const fmtDateTime = (s?: string | null) =>
   s ? new Date(s).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
 
+/** Triggers a browser download of a Blob (e.g. a generated PDF) under the given filename. */
+export function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 /** Extracts a human message from an RTK Query error (ApiResponse envelope or ProblemDetails). */
 export function apiError(e: unknown): string {
   const err = e as { data?: { message?: string; title?: string }; error?: string; status?: number };

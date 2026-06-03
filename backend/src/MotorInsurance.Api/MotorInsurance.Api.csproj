@@ -8,11 +8,21 @@
   <ItemGroup>
     <PackageReference Include="FastEndpoints" Version="8.1.0" />
     <PackageReference Include="FastEndpoints.Swagger" Version="8.1.0" />
+    <PackageReference Include="QuestPDF" Version="2026.5.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MotorInsurance.Application\MotorInsurance.Application.csproj" />
     <ProjectReference Include="..\MotorInsurance.Infrastructure\MotorInsurance.Infrastructure.csproj" />
+  </ItemGroup>
+  <!-- Thai-capable font (Sarabun, OFL) embedded for QuestPDF PDF generation. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\fonts\Sarabun-Regular.ttf">
+      <LogicalName>Sarabun-Regular.ttf</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Assets\fonts\Sarabun-Bold.ttf">
+      <LogicalName>Sarabun-Bold.ttf</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 </Project>

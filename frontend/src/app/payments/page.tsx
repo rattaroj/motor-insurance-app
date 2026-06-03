@@ -2,8 +2,13 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Wallet } from 'lucide-react';
-import { useGetPaymentsQuery, useSettlePaymentMutation, type PaymentDto } from '@/lib/api/insuranceApi';
+import { Wallet, Receipt } from 'lucide-react';
+import {
+  useGetPaymentsQuery,
+  useSettlePaymentMutation,
+  useGetPaymentReceiptMutation,
+  type PaymentDto,
+} from '@/lib/api/insuranceApi';
 import { StatusBadge } from '@/components/StatusBadge';
 import { DataTable } from '@/components/data-table';
 import { Button } from '@/components/ui/button';
@@ -20,7 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Can } from '@/components/can';
 import { P } from '@/lib/auth/permissions';
-import { apiError, fmtBaht, fmtDateTime } from '@/lib/utils';
+import { apiError, fmtBaht, fmtDateTime, saveBlob } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
 
 const PAGE_SIZE = 10;
@@ -53,8 +58,18 @@ export default function PaymentsPage() {
     direction: directionFilter === 'all' ? undefined : directionFilter,
   });
   const [settle, { isLoading: settling }] = useSettlePaymentMutation();
+  const [getReceipt] = useGetPaymentReceiptMutation();
   const [settleFor, setSettleFor] = useState<PaymentDto | null>(null);
   const [referenceNo, setReferenceNo] = useState('');
+
+  const downloadReceipt = async (paymentId: number, paymentNo: string) => {
+    try {
+      const blob = await getReceipt(paymentId).unwrap();
+      saveBlob(blob, `${paymentNo}.pdf`);
+    } catch (e) {
+      toast.error(apiError(e));
+    }
+  };
 
   const submit = async () => {
     if (!settleFor) return;
@@ -154,6 +169,10 @@ export default function PaymentsPage() {
                     <Wallet /> ชำระ
                   </Button>
                 </Can>
+              ) : p.status === 'Paid' && p.direction === 'Inbound' ? (
+                <Button size="sm" variant="ghost" onClick={() => downloadReceipt(p.id, p.paymentNo)}>
+                  <Receipt /> ใบเสร็จ
+                </Button>
               ) : null,
           },
         ]}

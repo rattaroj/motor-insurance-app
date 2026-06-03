@@ -3,7 +3,7 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Plus, Wallet, FileSignature } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Plus, Wallet, FileSignature, FileDown, Receipt } from 'lucide-react';
 import {
   useGetPolicyQuery,
   useGetPolicyHistoryQuery,
@@ -15,6 +15,8 @@ import {
   useSettlePaymentMutation,
   useFileClaimMutation,
   useCreateEndorsementMutation,
+  useGetPolicyDocumentMutation,
+  useGetPaymentReceiptMutation,
   fileUrl,
 } from '@/lib/api/insuranceApi';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -37,7 +39,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Can } from '@/components/can';
 import { ImageGallery } from '@/components/image-preview';
 import { P } from '@/lib/auth/permissions';
-import { apiError, fmtBaht, fmtDate, fmtDateTime } from '@/lib/utils';
+import { apiError, fmtBaht, fmtDate, fmtDateTime, saveBlob } from '@/lib/utils';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -56,6 +58,8 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
   const [settle, { isLoading: settling }] = useSettlePaymentMutation();
   const [fileClaim, { isLoading: filing }] = useFileClaimMutation();
   const [endorse, { isLoading: endorsing }] = useCreateEndorsementMutation();
+  const [getPolicyPdf, { isLoading: pdfLoading }] = useGetPolicyDocumentMutation();
+  const [getReceipt] = useGetPaymentReceiptMutation();
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState('');
@@ -74,6 +78,24 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
     } catch (e) {
       toast.error(apiError(e));
       return false;
+    }
+  };
+
+  const downloadPolicyPdf = async () => {
+    try {
+      const blob = await getPolicyPdf(policyId).unwrap();
+      saveBlob(blob, `${policy?.policyNo ?? 'policy'}.pdf`);
+    } catch (e) {
+      toast.error(apiError(e));
+    }
+  };
+
+  const downloadReceipt = async (paymentId: number, paymentNo: string) => {
+    try {
+      const blob = await getReceipt(paymentId).unwrap();
+      saveBlob(blob, `${paymentNo}.pdf`);
+    } catch (e) {
+      toast.error(apiError(e));
     }
   };
 
@@ -97,6 +119,9 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" disabled={pdfLoading} onClick={downloadPolicyPdf}>
+            <FileDown /> {pdfLoading ? 'กำลังสร้าง…' : 'PDF กรมธรรม์'}
+          </Button>
           <Can permission={P.PolicyActivate}>
             <Button
               disabled={activating || policy.status !== 'Issued'}
@@ -215,6 +240,11 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
                           <Wallet /> ชำระ
                         </Button>
                       </Can>
+                    )}
+                    {p.status === 'Paid' && p.direction === 'Inbound' && (
+                      <Button size="sm" variant="ghost" onClick={() => downloadReceipt(p.id, p.paymentNo)}>
+                        <Receipt /> ใบเสร็จ
+                      </Button>
                     )}
                   </TableCell>
                 </TableRow>
