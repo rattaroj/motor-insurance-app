@@ -16,6 +16,7 @@ public class EndorsementAndDriverTests
     {
         public TestDb(DbContextOptions options) : base(options) { }
         public DbSet<Customer> Customers => Set<Customer>();
+        public DbSet<CustomerTitle> CustomerTitles => Set<CustomerTitle>();
         public DbSet<Vehicle> Vehicles => Set<Vehicle>();
         public DbSet<VehicleBrand> VehicleBrands => Set<VehicleBrand>();
         public DbSet<VehicleModel> VehicleModels => Set<VehicleModel>();
@@ -27,6 +28,9 @@ public class EndorsementAndDriverTests
         public DbSet<Subdistrict> Subdistricts => Set<Subdistrict>();
         public DbSet<Quotation> Quotations => Set<Quotation>();
         public DbSet<QuotationDriver> QuotationDrivers => Set<QuotationDriver>();
+        public DbSet<Rider> Riders => Set<Rider>();
+        public DbSet<QuotationRider> QuotationRiders => Set<QuotationRider>();
+        public DbSet<PolicyRider> PolicyRiders => Set<PolicyRider>();
         public DbSet<Policy> Policies => Set<Policy>();
         public DbSet<Endorsement> Endorsements => Set<Endorsement>();
         public DbSet<Claim> Claims => Set<Claim>();
@@ -45,6 +49,8 @@ public class EndorsementAndDriverTests
             mb.Entity<Permission>().HasKey(p => p.Code);
             mb.Entity<UserRole>().HasKey(x => new { x.UserId, x.RoleId });
             mb.Entity<RolePermission>().HasKey(x => new { x.RoleId, x.PermissionCode });
+            mb.Entity<QuotationRider>().HasKey(x => new { x.QuotationId, x.RiderId });
+            mb.Entity<PolicyRider>().HasKey(x => new { x.PolicyId, x.RiderId });
         }
     }
 

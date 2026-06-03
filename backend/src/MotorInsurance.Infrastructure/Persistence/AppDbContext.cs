@@ -21,6 +21,7 @@ public class AppDbContext : DbContext, IAppDbContext
     }
 
     public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<CustomerTitle> CustomerTitles => Set<CustomerTitle>();
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
     public DbSet<VehicleBrand> VehicleBrands => Set<VehicleBrand>();
     public DbSet<VehicleModel> VehicleModels => Set<VehicleModel>();
@@ -32,6 +33,9 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Subdistrict> Subdistricts => Set<Subdistrict>();
     public DbSet<Quotation> Quotations => Set<Quotation>();
     public DbSet<QuotationDriver> QuotationDrivers => Set<QuotationDriver>();
+    public DbSet<Rider> Riders => Set<Rider>();
+    public DbSet<QuotationRider> QuotationRiders => Set<QuotationRider>();
+    public DbSet<PolicyRider> PolicyRiders => Set<PolicyRider>();
     public DbSet<Policy> Policies => Set<Policy>();
     public DbSet<Endorsement> Endorsements => Set<Endorsement>();
     public DbSet<Claim> Claims => Set<Claim>();

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Api.Endpoints.Policies;
+using MotorInsurance.Api.Endpoints.Renewals;
 using MotorInsurance.Application.Common.Interfaces;
 using MotorInsurance.Application.Quotations;
 using MotorInsurance.Domain.Entities;
@@ -17,6 +18,7 @@ public class PolicyIssuanceSliceTests
     {
         public TestDb(DbContextOptions options) : base(options) { }
         public DbSet<Customer> Customers => Set<Customer>();
+        public DbSet<CustomerTitle> CustomerTitles => Set<CustomerTitle>();
         public DbSet<Vehicle> Vehicles => Set<Vehicle>();
         public DbSet<VehicleBrand> VehicleBrands => Set<VehicleBrand>();
         public DbSet<VehicleModel> VehicleModels => Set<VehicleModel>();
@@ -28,6 +30,9 @@ public class PolicyIssuanceSliceTests
         public DbSet<Subdistrict> Subdistricts => Set<Subdistrict>();
         public DbSet<Quotation> Quotations => Set<Quotation>();
         public DbSet<QuotationDriver> QuotationDrivers => Set<QuotationDriver>();
+        public DbSet<Rider> Riders => Set<Rider>();
+        public DbSet<QuotationRider> QuotationRiders => Set<QuotationRider>();
+        public DbSet<PolicyRider> PolicyRiders => Set<PolicyRider>();
         public DbSet<Policy> Policies => Set<Policy>();
         public DbSet<Endorsement> Endorsements => Set<Endorsement>();
         public DbSet<Claim> Claims => Set<Claim>();
@@ -49,6 +54,8 @@ public class PolicyIssuanceSliceTests
             mb.Entity<Permission>().HasKey(p => p.Code);
             mb.Entity<UserRole>().HasKey(x => new { x.UserId, x.RoleId });
             mb.Entity<RolePermission>().HasKey(x => new { x.RoleId, x.PermissionCode });
+            mb.Entity<QuotationRider>().HasKey(x => new { x.QuotationId, x.RiderId });
+            mb.Entity<PolicyRider>().HasKey(x => new { x.PolicyId, x.RiderId });
         }
     }
 
@@ -105,5 +112,51 @@ public class PolicyIssuanceSliceTests
         Assert.Equal(PaymentDirection.Inbound, premium.Direction);
         Assert.Equal(PaymentStatus.Pending, premium.Status);
         Assert.Equal(policy.Premium, premium.Amount);
+    }
+
+    // Active policy expiring 2026-06-15 — within the 60-day renewal window for the fixed clock (2026-05-28).
+    private static async Task<TestDb> DbWithActivePolicyAsync(int ncbPercent)
+    {
+        var db = NewDb();
+        db.Customers.Add(new Customer { Id = 1, NationalId = "1100000000001", FirstName = "ก", LastName = "ข", FullName = "ก ข" });
+        db.Policies.Add(new Policy
+        {
+            Id = 1, PolicyNo = "POL-TEST-0001", CustomerId = 1, VehicleId = 1,
+            Status = PolicyStatus.Active, CoverageType = CoverageType.Type1,
+            SumInsured = 500_000m, BasePremium = 22_500m, Premium = 22_500m,
+            NcbPercent = ncbPercent, Deductible = 0,
+            EffectiveDate = new DateOnly(2025, 6, 15), ExpiryDate = new DateOnly(2026, 6, 15),
+        });
+        await db.SaveChangesAsync();
+        return db;
+    }
+
+    [Fact]
+    public async Task Renewal_steps_ncb_up_after_a_claim_free_year()
+    {
+        await using var db = await DbWithActivePolicyAsync(ncbPercent: 20);
+        var renewalId = await new RenewPolicyEndpoint(db, new FakeDocNo(), new FixedClock())
+            .RenewAsync(1, new RenewPolicyRequest(null), default);
+
+        var renewal = await db.Policies.FindAsync(renewalId);
+        Assert.Equal(30, renewal!.NcbPercent);   // 20 -> 30 (claim-free)
+    }
+
+    [Fact]
+    public async Task Renewal_resets_ncb_after_a_claim()
+    {
+        await using var db = await DbWithActivePolicyAsync(ncbPercent: 40);
+        db.Claims.Add(new Claim
+        {
+            Id = 1, ClaimNo = "CLM-TEST-0001", PolicyId = 1,
+            Status = ClaimStatus.Approved, IncidentDate = new DateOnly(2025, 12, 1), ClaimedAmount = 10_000m,
+        });
+        await db.SaveChangesAsync();
+
+        var renewalId = await new RenewPolicyEndpoint(db, new FakeDocNo(), new FixedClock())
+            .RenewAsync(1, new RenewPolicyRequest(null), default);
+
+        var renewal = await db.Policies.FindAsync(renewalId);
+        Assert.Equal(0, renewal!.NcbPercent);    // claim in prior year resets NCB
     }
 }

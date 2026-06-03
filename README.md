@@ -81,7 +81,8 @@ npm run dev           # → http://localhost:3000
 | แก้ไขลูกค้า | `UpdateCustomerEndpoint` | `PUT /api/customers/{id}` |
 | ลบลูกค้า | `DeleteCustomerEndpoint` | `DELETE /api/customers/{id}` |
 | อัปโหลดรูปบัตรผู้ขับขี่ | `UploadIdCardEndpoint` | `POST /api/uploads/id-card` (multipart) |
-| สร้างใบเสนอราคา (พร้อมผู้ขับขี่ 1–5 คน) | `CreateQuotationEndpoint` | `POST /api/quotations` |
+| สร้างใบเสนอราคา (ผู้ขับขี่ 1–5 คน + NCB/deductible/riders) | `CreateQuotationEndpoint` | `POST /api/quotations` |
+| ดูตัวอย่างเบี้ยแบบ breakdown (ไม่บันทึก) | `PreviewPremiumEndpoint` | `POST /api/quotations/preview` |
 | ออกกรมธรรม์ | `IssuePolicyCommand` | `POST /api/policies/issue` |
 | เปิดใช้งาน | `ActivatePolicyCommand` | `POST /api/policies/{id}/activate` |
 | ยกเลิก | `CancelPolicyCommand` | `POST /api/policies/{id}/cancel` |
@@ -95,13 +96,41 @@ npm run dev           # → http://localhost:3000
 | ดูกรมธรรม์ | `GetPoliciesQuery` / `GetPolicyByIdQuery` | `GET /api/policies` |
 | ดูประวัติ (temporal) | `GetPolicyHistoryQuery` | `GET /api/policies/{id}/history` |
 
-### Flow ต่ออายุ (renewal) — ที่ขอเพิ่ม
+### Master data (CRUD — ใช้ permission `lookup.read` / `lookup.manage`)
+
+| ชุดข้อมูล | Endpoint |
+|----------|----------|
+| ข้อมูลหลักรถยนต์ (ยี่ห้อ → รุ่น → รุ่นย่อย → ปี) | `GET/POST/PUT/DELETE /api/lookups/vehicle-brands` ฯลฯ |
+| ที่อยู่ (จังหวัด/อำเภอ/ตำบล/รหัสไปรษณีย์) | `GET /api/lookups/provinces` ฯลฯ |
+| คำนำหน้าชื่อลูกค้า | `GET/POST/PUT/DELETE /api/lookups/customer-titles` |
+| ความคุ้มครองเสริม (rider) — มีเบี้ยต่อรายการ | `GET/POST/PUT/DELETE /api/lookups/riders` |
+
+หน้า **ข้อมูลหลัก** (`/master`) จัดการชุดข้อมูลเหล่านี้ทั้งหมด
+
+### Flow ต่ออายุ (renewal)
 
 1. ตรวจกรมธรรม์เดิมต้อง `Active` และอยู่ในช่วง 60 วันก่อนหมดอายุ
 2. กันต่ออายุซ้ำ (เช็ค `previous_policy_id`)
 3. สร้างกรมธรรม์ใหม่สถานะ `Issued` ผูกกับเดิมผ่าน `PreviousPolicyId`
-4. effective = วันถัดจากกรมธรรม์เดิมหมดอายุ, คำนวณเบี้ยใหม่
-5. สร้าง payment เบี้ย (inbound, pending) — จ่ายแล้วจึงเปิดใช้งาน
+4. effective = วันถัดจากกรมธรรม์เดิมหมดอายุ
+5. **ปรับ NCB อัตโนมัติ**: ปีก่อนไม่มีเคลม → เลื่อนขั้นส่วนลดขึ้น (0→20→30→40→50%), มีเคลม → รีเซ็ตเป็น 0 แล้วคิดเบี้ยใหม่ (carry deductible + riders จากกรมธรรม์เดิม)
+6. สร้าง payment เบี้ย (inbound, pending) — จ่ายแล้วจึงเปิดใช้งาน
+
+### การคิดเบี้ยขั้นสูง (premium rating)
+
+`PremiumCalculator` (pure, ทดสอบได้) คืน **breakdown** ทีละชั้น — ฟอร์มใบเสนอราคาเรียก `POST /api/quotations/preview` เพื่อโชว์เบี้ยสด:
+
+```
+เบี้ยฐาน        = ทุนประกัน × อัตราตามชั้น (Type1 .045 / Type2+ .030 / Type3+ .022 / Type3 .015)
++ โหลดอายุรถ    = เบี้ยฐาน × (≤5ปี 0% / 6–10ปี 5% / >10ปี 10%)
+− ส่วนลด NCB    = (ฐาน+โหลด) × NCB% (0/20/30/40/50)
+− ส่วนลด deductible = min(ค่าเสียหายส่วนแรก × 0.5, ฐาน × 20%)
++ ความคุ้มครองเสริม = ผลรวมเบี้ย rider ที่เลือก
+= เบี้ยสุทธิ (ไม่ต่ำกว่า 0)
+```
+
+> อัตรา/factor ทั้งหมดเป็น **ค่าสมมติ** ไม่ใช่พิกัดจริง — ระบบจริงเสียบ actuarial engine ตรงนี้
+> เบี้ยฐาน/NCB/deductible/riders ถูกบันทึกบน quotation แล้ว carry ต่อไปยัง policy ตอนออกกรมธรรม์
 
 ---
 
@@ -114,23 +143,29 @@ npm run dev           # → http://localhost:3000
 curl -X POST localhost:5000/api/uploads/id-card -F 'file=@idcard.jpg'
 #   → { "path": "uploads/idcards/xxxx.jpg" }
 
-# 1) สร้าง quotation พร้อมผู้ขับขี่ระบุชื่อ (1–5 คน + รูปบัตร)
+# 1) ดูตัวอย่างเบี้ยแบบ breakdown ก่อน (ไม่บันทึก)
+curl -X POST localhost:5000/api/quotations/preview -H 'Content-Type: application/json' \
+  -d '{"vehicleId":1,"coverageType":"Type1","sumInsured":1000000,"ncbPercent":30,"deductible":5000,"riderIds":[1,4]}'
+#   → { "basePremium":45000, "ncbDiscount":13500, "deductibleDiscount":2500, "ridersTotal":2700, "netPremium":31700, ... }
+
+# 2) สร้าง quotation พร้อมผู้ขับขี่ระบุชื่อ (1–5 คน + รูปบัตร) และพารามิเตอร์คิดเบี้ย (NCB/deductible/riders ไม่บังคับ)
 curl -X POST localhost:5000/api/quotations -H 'Content-Type: application/json' \
   -d '{"customerId":1,"vehicleId":1,"coverageType":"Type1","sumInsured":500000,
+       "ncbPercent":20,"deductible":2000,"riderIds":[2],
        "drivers":[{"fullName":"สมชาย ใจดี","nationalId":"1100000000001","idCardImagePath":"uploads/idcards/xxxx.jpg"}]}'
 
-# 2) ออกกรมธรรม์จาก quotation
+# 3) ออกกรมธรรม์จาก quotation
 curl -X POST localhost:5000/api/policies/issue -H 'Content-Type: application/json' \
   -d '{"quotationId":1,"effectiveDate":"2026-06-01"}'
 
-# 3) จ่ายเบี้ย (settle premium payment) → policy เปิดใช้งานอัตโนมัติ
+# 4) จ่ายเบี้ย (settle premium payment) → policy เปิดใช้งานอัตโนมัติ
 curl -X POST localhost:5000/api/payments/1/settle -H 'Content-Type: application/json' \
   -d '{"referenceNo":"TXN-001"}'
 
-# 4) ต่ออายุ
+# 5) ต่ออายุ (NCB ปรับอัตโนมัติตามประวัติเคลม)
 curl -X POST localhost:5000/api/renewals/1 -H 'Content-Type: application/json' -d '{}'
 
-# 5) แก้ข้อมูลลูกค้าที่มีกรมธรรม์แล้ว → ต้องสลักหลัง (แก้ตรง ๆ ผ่าน PUT /api/customers/{id} จะได้ 409)
+# 6) แก้ข้อมูลลูกค้าที่มีกรมธรรม์แล้ว → ต้องสลักหลัง (แก้ตรง ๆ ผ่าน PUT /api/customers/{id} จะได้ 409)
 curl -X POST localhost:5000/api/policies/1/endorsements -H 'Content-Type: application/json' \
   -d '{"phone":"0899999999","effectiveDate":"2026-06-10","note":"ลูกค้าแจ้งเปลี่ยนเบอร์"}'
 ```

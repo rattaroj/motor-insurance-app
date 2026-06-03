@@ -18,6 +18,9 @@ public record PolicyDto(
     string CoverageType,
     decimal SumInsured,
     decimal Premium,
+    decimal BasePremium,
+    int NcbPercent,
+    decimal Deductible,
     DateOnly? EffectiveDate,
     DateOnly? ExpiryDate,
     long? PreviousPolicyId);

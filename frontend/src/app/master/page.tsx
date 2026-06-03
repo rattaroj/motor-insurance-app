@@ -18,11 +18,20 @@ import {
   useCreateModelYearMutation,
   useUpdateModelYearMutation,
   useDeleteModelYearMutation,
+  useGetCustomerTitlesQuery,
+  useCreateCustomerTitleMutation,
+  useUpdateCustomerTitleMutation,
+  useDeleteCustomerTitleMutation,
+  useGetRidersQuery,
+  useCreateRiderMutation,
+  useUpdateRiderMutation,
+  useDeleteRiderMutation,
   POWERTRAIN_LABELS,
   POWERTRAIN_OPTIONS,
   type Powertrain,
 } from '@/lib/api/insuranceApi';
 import { MasterColumn, type MasterItem } from '@/components/master-column';
+import { fmtBaht } from '@/lib/utils';
 
 export default function MasterDataPage() {
   const [brandId, setBrandId] = useState<number | null>(null);
@@ -46,6 +55,16 @@ export default function MasterDataPage() {
   const [createModelYear] = useCreateModelYearMutation();
   const [updateModelYear] = useUpdateModelYearMutation();
   const [deleteModelYear] = useDeleteModelYearMutation();
+
+  const { data: titles } = useGetCustomerTitlesQuery();
+  const [createTitle] = useCreateCustomerTitleMutation();
+  const [updateTitle] = useUpdateCustomerTitleMutation();
+  const [deleteTitle] = useDeleteCustomerTitleMutation();
+
+  const { data: riders } = useGetRidersQuery();
+  const [createRider] = useCreateRiderMutation();
+  const [updateRider] = useUpdateRiderMutation();
+  const [deleteRider] = useDeleteRiderMutation();
 
   const toItems = (xs?: { id: number; name: string }[]): MasterItem[] =>
     (xs ?? []).map((x) => ({ id: x.id, label: x.name }));
@@ -139,6 +158,43 @@ export default function MasterDataPage() {
           onAdd={(v) => createModelYear({ submodelId: submodelId!, year: Number(v) }).unwrap()}
           onEdit={(id, v) => updateModelYear({ id, year: Number(v) }).unwrap()}
           onDelete={(id) => deleteModelYear(id).unwrap()}
+        />
+      </div>
+
+      <div className="pt-2">
+        <h1 className="text-2xl font-semibold tracking-tight">ข้อมูลหลักการรับประกัน</h1>
+        <p className="text-sm text-muted-foreground">คำนำหน้าชื่อลูกค้า และความคุ้มครองเสริม (rider) ที่ใช้คิดเบี้ย</p>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-4">
+        <MasterColumn
+          title="คำนำหน้าชื่อ"
+          fieldLabel="คำนำหน้า"
+          items={toItems(titles)}
+          selectedId={null}
+          selectable={false}
+          onSelect={() => {}}
+          onAdd={(v) => createTitle({ name: v }).unwrap()}
+          onEdit={(id, v) => updateTitle({ id, name: v }).unwrap()}
+          onDelete={(id) => deleteTitle(id).unwrap()}
+        />
+
+        <MasterColumn
+          title="ความคุ้มครองเสริม"
+          fieldLabel="ชื่อความคุ้มครอง"
+          items={(riders ?? []).map((r) => ({
+            id: r.id,
+            label: r.name,
+            meta: fmtBaht(r.premium),
+            selectValue: String(r.premium),
+          }))}
+          selectedId={null}
+          selectable={false}
+          numberField={{ label: 'เบี้ย (บาท)', placeholder: '1000' }}
+          onSelect={() => {}}
+          onAdd={(v, premium) => createRider({ name: v, premium: Number(premium) }).unwrap()}
+          onEdit={(id, v, premium) => updateRider({ id, name: v, premium: Number(premium) }).unwrap()}
+          onDelete={(id) => deleteRider(id).unwrap()}
         />
       </div>
     </div>

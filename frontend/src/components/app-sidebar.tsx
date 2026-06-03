@@ -26,7 +26,7 @@ const nav: NavItem[] = [
   { href: '/policies', label: 'กรมธรรม์', icon: ShieldCheck, permission: P.PolicyRead },
   { href: '/claims', label: 'เคลม', icon: FileWarning, permission: P.ClaimRead },
   { href: '/payments', label: 'การชำระเงิน', icon: CreditCard, permission: P.PaymentRead },
-  { href: '/master', label: 'ข้อมูลหลักรถยนต์', icon: Database, permission: P.LookupManage },
+  { href: '/master', label: 'ข้อมูลหลัก', icon: Database, permission: P.LookupManage },
 ];
 
 export function SidebarNav({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {

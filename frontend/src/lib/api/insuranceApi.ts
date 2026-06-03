@@ -12,9 +12,6 @@ export type PolicyStatus = 'Draft' | 'Quoted' | 'Issued' | 'Active' | 'Cancelled
 export type ClaimStatus = 'Filed' | 'UnderReview' | 'Assessment' | 'Approved' | 'Rejected' | 'Paid' | 'Closed';
 export type CoverageType = 'Type1' | 'Type2Plus' | 'Type3Plus' | 'Type3';
 
-/** Common Thai honorific titles (คำนำหน้า) for the customer title select. */
-export const TITLE_OPTIONS = ['นาย', 'นาง', 'นางสาว'] as const;
-
 export interface CustomerDto {
   id: number;
   nationalId: string;
@@ -111,6 +108,26 @@ export interface PostalCodeOption {
   code: string;
 }
 
+/** Add-on rider (ความคุ้มครองเสริม) master row. */
+export interface Rider {
+  id: number;
+  name: string;
+  premium: number;
+}
+
+/** Premium broken down by factor (live preview + create response context). */
+export interface PremiumBreakdown {
+  basePremium: number;
+  vehicleAgeLoading: number;
+  ncbDiscount: number;
+  deductibleDiscount: number;
+  ridersTotal: number;
+  netPremium: number;
+}
+
+/** Allowed no-claim-bonus discount steps (mirrors backend PremiumCalculator.NcbSteps). */
+export const NCB_STEPS = [0, 20, 30, 40, 50] as const;
+
 export interface QuotationDto {
   id: number;
   quotationNo: string;
@@ -122,6 +139,10 @@ export interface QuotationDto {
   sumInsured: number;
   premium: number;
   validUntil: string;
+  basePremium: number;
+  ncbPercent: number;
+  deductible: number;
+  riders: string[];
 }
 
 export interface PolicyDto {
@@ -135,6 +156,9 @@ export interface PolicyDto {
   coverageType: string;
   sumInsured: number;
   premium: number;
+  basePremium: number;
+  ncbPercent: number;
+  deductible: number;
   effectiveDate: string | null;
   expiryDate: string | null;
   previousPolicyId: number | null;
@@ -162,8 +186,9 @@ export interface EndorsementDto {
   createdAt: string;
 }
 
-/** Policy detail = the list DTO plus named drivers and endorsement history. */
+/** Policy detail = the list DTO plus riders, named drivers and endorsement history. */
 export interface PolicyDetailDto extends PolicyDto {
+  riders: string[];
   drivers: PolicyDriverDto[];
   endorsements: EndorsementDto[];
 }
@@ -295,6 +320,8 @@ export const insuranceApi = createApi({
     'PolicyHistory',
     'Claim',
     'Payment',
+    'CustomerTitle',
+    'Rider',
     'VBrand',
     'VModel',
     'VSubmodel',
@@ -361,6 +388,24 @@ export const insuranceApi = createApi({
     deleteCustomer: build.mutation<void, number>({
       query: (id) => ({ url: `customers/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Customer'],
+    }),
+
+    // ---------- Customer title master-data ----------
+    getCustomerTitles: build.query<Option[], void>({
+      query: () => 'lookups/customer-titles',
+      providesTags: ['CustomerTitle'],
+    }),
+    createCustomerTitle: build.mutation<{ id: number }, { name: string }>({
+      query: (body) => ({ url: 'lookups/customer-titles', method: 'POST', body }),
+      invalidatesTags: ['CustomerTitle'],
+    }),
+    updateCustomerTitle: build.mutation<void, { id: number; name: string }>({
+      query: ({ id, name }) => ({ url: `lookups/customer-titles/${id}`, method: 'PUT', body: { name } }),
+      invalidatesTags: ['CustomerTitle'],
+    }),
+    deleteCustomerTitle: build.mutation<void, number>({
+      query: (id) => ({ url: `lookups/customer-titles/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['CustomerTitle'],
     }),
 
     // ---------- Uploads ----------
@@ -556,10 +601,45 @@ export const insuranceApi = createApi({
         coverageType: CoverageType;
         sumInsured: number;
         drivers: DriverInput[];
+        ncbPercent?: number;
+        deductible?: number;
+        riderIds?: number[];
       }
     >({
       query: (body) => ({ url: 'quotations', method: 'POST', body }),
       invalidatesTags: ['Quotation'],
+    }),
+    /** Live premium preview — rate without persisting (for the create form). */
+    previewPremium: build.mutation<
+      PremiumBreakdown,
+      {
+        vehicleId: number;
+        coverageType: CoverageType;
+        sumInsured: number;
+        ncbPercent?: number;
+        deductible?: number;
+        riderIds?: number[];
+      }
+    >({
+      query: (body) => ({ url: 'quotations/preview', method: 'POST', body }),
+    }),
+
+    // ---------- Riders (add-on coverage master) ----------
+    getRiders: build.query<Rider[], void>({
+      query: () => 'lookups/riders',
+      providesTags: ['Rider'],
+    }),
+    createRider: build.mutation<{ id: number }, { name: string; premium: number }>({
+      query: (body) => ({ url: 'lookups/riders', method: 'POST', body }),
+      invalidatesTags: ['Rider'],
+    }),
+    updateRider: build.mutation<void, { id: number; name: string; premium: number }>({
+      query: ({ id, name, premium }) => ({ url: `lookups/riders/${id}`, method: 'PUT', body: { name, premium } }),
+      invalidatesTags: ['Rider'],
+    }),
+    deleteRider: build.mutation<void, number>({
+      query: (id) => ({ url: `lookups/riders/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['Rider'],
     }),
 
     // ---------- Policies ----------
@@ -692,6 +772,10 @@ export const {
   useCreateCustomerMutation,
   useUpdateCustomerMutation,
   useDeleteCustomerMutation,
+  useGetCustomerTitlesQuery,
+  useCreateCustomerTitleMutation,
+  useUpdateCustomerTitleMutation,
+  useDeleteCustomerTitleMutation,
   useUploadIdCardMutation,
   useGetVehiclesQuery,
   useCreateVehicleMutation,
@@ -729,6 +813,11 @@ export const {
   useDeletePostalCodeMutation,
   useGetQuotationsQuery,
   useCreateQuotationMutation,
+  usePreviewPremiumMutation,
+  useGetRidersQuery,
+  useCreateRiderMutation,
+  useUpdateRiderMutation,
+  useDeleteRiderMutation,
   useGetPoliciesQuery,
   useGetPolicyQuery,
   useGetPolicyHistoryQuery,

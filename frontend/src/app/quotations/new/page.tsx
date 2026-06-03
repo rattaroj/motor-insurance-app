@@ -1,16 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { ArrowLeft, Plus, Trash2, Upload, Check } from 'lucide-react';
 import {
   useCreateQuotationMutation,
+  usePreviewPremiumMutation,
   useGetCustomersQuery,
   useGetVehiclesQuery,
+  useGetRidersQuery,
   useUploadIdCardMutation,
   fileUrl,
+  NCB_STEPS,
   type CoverageType,
   type DriverInput,
 } from '@/lib/api/insuranceApi';
@@ -20,7 +23,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { apiError } from '@/lib/utils';
+import { apiError, cn, fmtBaht } from '@/lib/utils';
+import { useDebouncedValue } from '@/lib/use-debounced';
 
 const COVERAGES: { value: CoverageType; label: string }[] = [
   { value: 'Type1', label: 'ชั้น 1' },
@@ -29,7 +33,12 @@ const COVERAGES: { value: CoverageType; label: string }[] = [
   { value: 'Type3', label: 'ชั้น 3' },
 ];
 
-const emptyCreate = { customerId: '', vehicleId: '', coverageType: '' as CoverageType | '', sumInsured: '' };
+const DEDUCTIBLES = [0, 1000, 2000, 5000];
+
+const emptyCreate = {
+  customerId: '', vehicleId: '', coverageType: '' as CoverageType | '', sumInsured: '',
+  ncbPercent: '0', deductible: '0',
+};
 const MAX_DRIVERS = 5;
 
 /** A driver row in the create form: the API payload plus UI-only upload state. */
@@ -38,6 +47,16 @@ const emptyDriver = (): DriverRow => ({ fullName: '', nationalId: '', idCardImag
 const driverComplete = (d: DriverRow) =>
   d.fullName.trim() !== '' && d.nationalId.length === 13 && d.idCardImagePath !== '';
 
+/** One line in the premium breakdown panel. */
+function Row({ label, value, negative }: { label: string; value: string; negative?: boolean }) {
+  return (
+    <div className="flex items-center justify-between">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className={cn('tabular-nums', negative && 'text-emerald-600')}>{value}</dd>
+    </div>
+  );
+}
+
 export default function NewQuotationPage() {
   const router = useRouter();
   const { data: customers } = useGetCustomersQuery({ pageSize: 100 });
@@ -45,7 +64,36 @@ export default function NewQuotationPage() {
   const [uploadIdCard] = useUploadIdCardMutation();
 
   const [form, setForm] = useState(emptyCreate);
+  const [riderIds, setRiderIds] = useState<number[]>([]);
   const [drivers, setDrivers] = useState<DriverRow[]>([emptyDriver()]);
+
+  const { data: riders } = useGetRidersQuery();
+  const [previewPremium, { data: breakdown, isLoading: previewing }] = usePreviewPremiumMutation();
+
+  const toggleRider = (id: number) =>
+    setRiderIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+
+  // Live premium preview: re-rate (debounced) whenever a pricing input changes.
+  const canPreview = !!form.vehicleId && !!form.coverageType && Number(form.sumInsured) > 0;
+  const previewKey = useDebouncedValue(
+    JSON.stringify({
+      v: form.vehicleId, c: form.coverageType, s: form.sumInsured,
+      n: form.ncbPercent, d: form.deductible, r: riderIds,
+    }),
+    400,
+  );
+  useEffect(() => {
+    if (!canPreview) return;
+    previewPremium({
+      vehicleId: Number(form.vehicleId),
+      coverageType: form.coverageType as CoverageType,
+      sumInsured: Number(form.sumInsured),
+      ncbPercent: Number(form.ncbPercent),
+      deductible: Number(form.deductible),
+      riderIds,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewKey]);
 
   const setDriver = (i: number, patch: Partial<DriverRow>) =>
     setDrivers((ds) => ds.map((d, idx) => (idx === i ? { ...d, ...patch } : d)));
@@ -76,6 +124,9 @@ export default function NewQuotationPage() {
         vehicleId: Number(form.vehicleId),
         coverageType: form.coverageType as CoverageType,
         sumInsured: Number(form.sumInsured),
+        ncbPercent: Number(form.ncbPercent),
+        deductible: Number(form.deductible),
+        riderIds,
         drivers: drivers.map((d) => ({
           fullName: d.fullName,
           nationalId: d.nationalId,
@@ -169,6 +220,108 @@ export default function NewQuotationPage() {
                 placeholder="500000"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>ส่วนลดประวัติดี (NCB)</Label>
+              <Select value={form.ncbPercent} onValueChange={(v) => setForm({ ...form, ncbPercent: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {NCB_STEPS.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}%
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>ค่าเสียหายส่วนแรก (Deductible)</Label>
+              <Select value={form.deductible} onValueChange={(v) => setForm({ ...form, deductible: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEDUCTIBLES.map((d) => (
+                    <SelectItem key={d} value={String(d)}>
+                      {d === 0 ? 'ไม่มี' : fmtBaht(d)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Add-on riders (ความคุ้มครองเสริม) — toggle on/off; premiums add to the net. */}
+          {!!riders?.length && (
+            <div className="space-y-2">
+              <Label>ความคุ้มครองเสริม</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {riders.map((rd) => {
+                  const on = riderIds.includes(rd.id);
+                  return (
+                    <button
+                      key={rd.id}
+                      type="button"
+                      onClick={() => toggleRider(rd.id)}
+                      className={cn(
+                        'flex items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors',
+                        on ? 'border-primary bg-primary/5' : 'hover:bg-muted',
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            'flex h-4 w-4 items-center justify-center rounded border',
+                            on ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/40',
+                          )}
+                        >
+                          {on && <Check className="h-3 w-3" />}
+                        </span>
+                        {rd.name}
+                      </span>
+                      <span className="tabular-nums text-muted-foreground">+{fmtBaht(rd.premium)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Live premium breakdown */}
+          <div className="rounded-md border bg-muted/30 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <Label className="text-sm">สรุปเบี้ยประกัน</Label>
+              {previewing && <span className="text-xs text-muted-foreground">กำลังคำนวณ…</span>}
+            </div>
+            {!canPreview ? (
+              <p className="text-sm text-muted-foreground">เลือกรถ ชั้นความคุ้มครอง และทุนประกัน เพื่อคำนวณเบี้ย</p>
+            ) : breakdown ? (
+              <dl className="space-y-1 text-sm">
+                <Row label="เบี้ยฐาน" value={fmtBaht(breakdown.basePremium)} />
+                {breakdown.vehicleAgeLoading > 0 && (
+                  <Row label="โหลดตามอายุรถ" value={`+${fmtBaht(breakdown.vehicleAgeLoading)}`} />
+                )}
+                {breakdown.ncbDiscount > 0 && (
+                  <Row label={`ส่วนลด NCB ${form.ncbPercent}%`} value={`−${fmtBaht(breakdown.ncbDiscount)}`} negative />
+                )}
+                {breakdown.deductibleDiscount > 0 && (
+                  <Row label="ส่วนลดค่าเสียหายส่วนแรก" value={`−${fmtBaht(breakdown.deductibleDiscount)}`} negative />
+                )}
+                {breakdown.ridersTotal > 0 && (
+                  <Row label="ความคุ้มครองเสริม" value={`+${fmtBaht(breakdown.ridersTotal)}`} />
+                )}
+                <div className="mt-2 flex items-center justify-between border-t pt-2 text-base font-semibold">
+                  <span>เบี้ยสุทธิ</span>
+                  <span className="tabular-nums text-primary">{fmtBaht(breakdown.netPremium)}</span>
+                </div>
+              </dl>
+            ) : (
+              <p className="text-sm text-muted-foreground">—</p>
+            )}
           </div>
 
           {/* Named drivers (กฎใหม่: ระบุผู้ขับขี่ 1–5 คน พร้อมรูปบัตรประชาชน) */}

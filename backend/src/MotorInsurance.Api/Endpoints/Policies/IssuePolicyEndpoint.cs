@@ -49,7 +49,9 @@ public class IssuePolicyEndpoint : Endpoint<IssuePolicyRequest, IssuePolicyRespo
     /// <summary>Core logic, separated so it is unit-testable without the HTTP layer.</summary>
     public async Task<long> IssueAsync(IssuePolicyRequest r, CancellationToken ct)
     {
-        var quote = await _db.Quotations.FirstOrDefaultAsync(q => q.Id == r.QuotationId, ct)
+        var quote = await _db.Quotations
+            .Include(q => q.Riders)
+            .FirstOrDefaultAsync(q => q.Id == r.QuotationId, ct)
             ?? throw new NotFoundException(nameof(Quotation), r.QuotationId);
 
         if (quote.ValidUntil < DateOnly.FromDateTime(_clock.UtcNow.Date))
@@ -59,6 +61,7 @@ public class IssuePolicyEndpoint : Endpoint<IssuePolicyRequest, IssuePolicyRespo
             throw new ConflictException("A policy has already been issued from this quotation.");
 
         // A policy starts at Issued (premium captured, awaiting activation on payment).
+        // The full rating (base/NCB/deductible + riders) is carried forward from the quotation.
         var policy = new Policy
         {
             PolicyNo = await _docNo.NextAsync("POL", ct),
@@ -68,10 +71,14 @@ public class IssuePolicyEndpoint : Endpoint<IssuePolicyRequest, IssuePolicyRespo
             Status = PolicyStatus.Issued,
             CoverageType = quote.CoverageType,
             SumInsured = quote.SumInsured,
+            BasePremium = quote.BasePremium,
             Premium = quote.Premium,
+            NcbPercent = quote.NcbPercent,
+            Deductible = quote.Deductible,
             EffectiveDate = r.EffectiveDate,
             ExpiryDate = r.EffectiveDate.AddYears(1),
             CreatedAt = _clock.UtcNow,
+            Riders = quote.Riders.Select(qr => new PolicyRider { RiderId = qr.RiderId }).ToList(),
         };
         _db.Policies.Add(policy);
 

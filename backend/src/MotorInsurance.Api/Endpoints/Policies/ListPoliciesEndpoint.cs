@@ -54,6 +54,7 @@ public class ListPoliciesEndpoint : Endpoint<ListPoliciesRequest, PagedResult<Po
                 p.VehicleId,
                 VehicleRegistration = p.Vehicle.RegistrationNo,
                 p.Status, p.CoverageType, p.SumInsured, p.Premium,
+                p.BasePremium, p.NcbPercent, p.Deductible,
                 p.EffectiveDate, p.ExpiryDate, p.PreviousPolicyId,
             })
             .ToPagedResultAsync(
@@ -61,7 +62,8 @@ public class ListPoliciesEndpoint : Endpoint<ListPoliciesRequest, PagedResult<Po
                 x => new PolicyDto(
                     x.Id, x.PolicyNo, x.CustomerId, x.CustomerName,
                     x.VehicleId, x.VehicleRegistration, x.Status.ToString(), x.CoverageType.ToString(),
-                    x.SumInsured, x.Premium, x.EffectiveDate, x.ExpiryDate, x.PreviousPolicyId),
+                    x.SumInsured, x.Premium, x.BasePremium, x.NcbPercent, x.Deductible,
+                    x.EffectiveDate, x.ExpiryDate, x.PreviousPolicyId),
                 ct);
     }
 }

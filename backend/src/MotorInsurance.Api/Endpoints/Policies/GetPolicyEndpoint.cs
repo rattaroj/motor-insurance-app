@@ -18,8 +18,10 @@ public record EndorsementDto(
 public record PolicyDetailDto(
     long Id, string PolicyNo, long CustomerId, string CustomerName,
     long VehicleId, string VehicleRegistration, string Status, string CoverageType,
-    decimal SumInsured, decimal Premium, DateOnly? EffectiveDate, DateOnly? ExpiryDate,
+    decimal SumInsured, decimal Premium, decimal BasePremium, int NcbPercent, decimal Deductible,
+    DateOnly? EffectiveDate, DateOnly? ExpiryDate,
     long? PreviousPolicyId,
+    IReadOnlyList<string> Riders,
     IReadOnlyList<PolicyDriverDto> Drivers,
     IReadOnlyList<EndorsementDto> Endorsements);
 
@@ -63,12 +65,19 @@ public class GetPolicyEndpoint : EndpointWithoutRequest<PolicyDetailDto>
                 e.EndorsementNo, e.FieldName, e.OldValue, e.NewValue, e.EffectiveDate, e.Note, e.CreatedAt))
             .ToListAsync(ct);
 
+        var riders = await _db.PolicyRiders.AsNoTracking()
+            .Where(pr => pr.PolicyId == id)
+            .OrderBy(pr => pr.RiderId)
+            .Select(pr => pr.Rider.Name)
+            .ToListAsync(ct);
+
         Response = new PolicyDetailDto(
             policy.Id, policy.PolicyNo, policy.CustomerId, policy.Customer.FullName,
             policy.VehicleId, policy.Vehicle.RegistrationNo,
             policy.Status.ToString(), policy.CoverageType.ToString(),
-            policy.SumInsured, policy.Premium, policy.EffectiveDate, policy.ExpiryDate,
-            policy.PreviousPolicyId, drivers, endorsements);
+            policy.SumInsured, policy.Premium, policy.BasePremium, policy.NcbPercent, policy.Deductible,
+            policy.EffectiveDate, policy.ExpiryDate,
+            policy.PreviousPolicyId, riders, drivers, endorsements);
     }
 
     private async Task<long?> ResolveQuotationIdAsync(Policy policy, CancellationToken ct)

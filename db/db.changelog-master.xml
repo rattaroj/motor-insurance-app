@@ -147,4 +147,26 @@
       ALTER TABLE customer DROP COLUMN title, first_name, last_name, birth_date;
     </rollback>
   </changeSet>
+
+  <changeSet id="V014-customer-title" author="rattaroj.nit">
+    <sqlFile path="./scripts/V014__customer_title.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      DROP TABLE IF EXISTS customer_title;
+    </rollback>
+  </changeSet>
+
+  <changeSet id="V015-premium-rating" author="rattaroj.nit">
+    <!-- splitStatements="true": each CREATE TABLE must run in its own batch before the
+         INSERT/FK that reference it (SQL Server name resolution). -->
+    <sqlFile path="./scripts/V015__premium_rating.sql" relativeToChangelogFile="true" splitStatements="true"/>
+    <rollback>
+      DROP TABLE IF EXISTS policy_rider;
+      DROP TABLE IF EXISTS quotation_rider;
+      DROP TABLE IF EXISTS rider;
+      ALTER TABLE policy DROP CONSTRAINT df_policy_ncb, df_policy_deductible, df_policy_base;
+      ALTER TABLE policy DROP COLUMN ncb_percent, deductible, base_premium;
+      ALTER TABLE quotation DROP CONSTRAINT df_quotation_ncb, df_quotation_deductible, df_quotation_base;
+      ALTER TABLE quotation DROP COLUMN ncb_percent, deductible, base_premium;
+    </rollback>
+  </changeSet>
 </databaseChangeLog>

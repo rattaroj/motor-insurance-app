@@ -145,6 +145,37 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
         ))}
       </div>
 
+      {/* Premium breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">รายละเอียดเบี้ยประกัน</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <dl className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">เบี้ยฐาน</dt>
+              <dd className="tabular-nums">{fmtBaht(policy.basePremium)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">ส่วนลดประวัติดี (NCB)</dt>
+              <dd className="tabular-nums">{policy.ncbPercent}%</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">ค่าเสียหายส่วนแรก</dt>
+              <dd className="tabular-nums">{policy.deductible > 0 ? fmtBaht(policy.deductible) : 'ไม่มี'}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">ความคุ้มครองเสริม</dt>
+              <dd className="text-right">{policy.riders.length ? policy.riders.join(', ') : 'ไม่มี'}</dd>
+            </div>
+            <div className="mt-2 flex justify-between border-t pt-2 text-base font-semibold">
+              <span>เบี้ยสุทธิ</span>
+              <span className="tabular-nums text-primary">{fmtBaht(policy.premium)}</span>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+
       {/* Payments */}
       <Card>
         <CardHeader className="flex-row items-center justify-between">

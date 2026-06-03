@@ -14,7 +14,8 @@ namespace MotorInsurance.Api.Endpoints.Quotations;
 public record DriverInput(string FullName, string NationalId, string IdCardImagePath);
 public record CreateQuotationRequest(
     long CustomerId, long VehicleId, CoverageType CoverageType, decimal SumInsured,
-    IReadOnlyList<DriverInput> Drivers);
+    IReadOnlyList<DriverInput> Drivers,
+    int NcbPercent = 0, decimal Deductible = 0, IReadOnlyList<long>? RiderIds = null);
 public record CreateQuotationResponse(long Id);
 
 public class CreateQuotationValidator : Validator<CreateQuotationRequest>
@@ -24,6 +25,9 @@ public class CreateQuotationValidator : Validator<CreateQuotationRequest>
         RuleFor(x => x.CustomerId).GreaterThan(0);
         RuleFor(x => x.VehicleId).GreaterThan(0);
         RuleFor(x => x.SumInsured).GreaterThan(0).LessThanOrEqualTo(50_000_000);
+        RuleFor(x => x.NcbPercent).Must(PremiumCalculator.NcbSteps.Contains)
+            .WithMessage("ส่วนลดประวัติดีต้องเป็น 0/20/30/40/50%");
+        RuleFor(x => x.Deductible).GreaterThanOrEqualTo(0);
         // New-law requirement: 1–5 named drivers, each with an ID-card image.
         RuleFor(x => x.Drivers).NotEmpty().Must(d => d.Count <= 5)
             .WithMessage("ต้องระบุผู้ขับขี่ 1–5 คน");
@@ -62,6 +66,10 @@ public class CreateQuotationEndpoint : Endpoint<CreateQuotationRequest, CreateQu
         if (vehicle.CustomerId != r.CustomerId)
             throw new ConflictException("Vehicle does not belong to the specified customer.");
 
+        var rating = await PremiumRatingService.RateAsync(
+            _db, _clock.UtcNow.Year, r.VehicleId, r.CoverageType, r.SumInsured,
+            r.NcbPercent, r.Deductible, r.RiderIds, ct);
+
         var quotation = new Quotation
         {
             QuotationNo = await _docNo.NextAsync("QUO", ct),
@@ -69,7 +77,10 @@ public class CreateQuotationEndpoint : Endpoint<CreateQuotationRequest, CreateQu
             VehicleId = r.VehicleId,
             CoverageType = r.CoverageType,
             SumInsured = r.SumInsured,
-            Premium = PremiumCalculator.Calculate(r.CoverageType, r.SumInsured),
+            BasePremium = rating.Breakdown.BasePremium,
+            Premium = rating.Breakdown.NetPremium,
+            NcbPercent = PremiumCalculator.NormalizeNcb(r.NcbPercent),
+            Deductible = r.Deductible,
             ValidUntil = DateOnly.FromDateTime(_clock.UtcNow.AddDays(30)),
             CreatedAt = _clock.UtcNow,
             Drivers = r.Drivers.Select(d => new QuotationDriver
@@ -79,6 +90,7 @@ public class CreateQuotationEndpoint : Endpoint<CreateQuotationRequest, CreateQu
                 IdCardImagePath = d.IdCardImagePath,
                 CreatedAt = _clock.UtcNow,
             }).ToList(),
+            Riders = rating.RiderIds.Select(id => new QuotationRider { RiderId = id }).ToList(),
         };
         _db.Quotations.Add(quotation);
         await _db.SaveChangesAsync(ct);

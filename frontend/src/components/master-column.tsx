@@ -33,13 +33,19 @@ export interface SelectField {
   options: { value: string; label: string }[];
 }
 
+/** Optional extra number input rendered in the add/edit dialogs (e.g. premium on a rider). */
+export interface NumberField {
+  label: string;
+  placeholder?: string;
+}
+
 interface Props {
   title: string;
   items: MasterItem[] | undefined;
   selectedId: number | null;
   onSelect: (id: number) => void;
-  onAdd: (value: string, selectValue?: string) => Promise<unknown>;
-  onEdit: (id: number, value: string, selectValue?: string) => Promise<unknown>;
+  onAdd: (value: string, secondaryValue?: string) => Promise<unknown>;
+  onEdit: (id: number, value: string, secondaryValue?: string) => Promise<unknown>;
   onDelete: (id: number) => Promise<unknown>;
   fieldLabel: string;
   inputType?: 'text' | 'number';
@@ -47,6 +53,7 @@ interface Props {
   disabledHint?: string;
   selectable?: boolean;
   selectField?: SelectField;
+  numberField?: NumberField;
 }
 
 export function MasterColumn({
@@ -63,6 +70,7 @@ export function MasterColumn({
   disabledHint = 'เลือกรายการทางซ้ายก่อน',
   selectable = true,
   selectField,
+  numberField,
 }: Props) {
   const [addOpen, setAddOpen] = useState(false);
   const [value, setValue] = useState('');
@@ -71,8 +79,8 @@ export function MasterColumn({
   const [deleteItem, setDeleteItem] = useState<MasterItem | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Save is blocked until the optional select has a value (when the column uses one).
-  const selectMissing = !!selectField && !selectValue;
+  // Save is blocked until the optional secondary field (select or number) has a value.
+  const selectMissing = (!!selectField || !!numberField) && selectValue === '';
 
   const run = async (fn: () => Promise<unknown>, ok: string, done: () => void) => {
     setBusy(true);
@@ -179,6 +187,17 @@ export function MasterColumn({
                 </Select>
               </div>
             )}
+            {numberField && (
+              <div className="space-y-2">
+                <Label required>{numberField.label}</Label>
+                <Input
+                  type="number"
+                  value={selectValue}
+                  placeholder={numberField.placeholder}
+                  onChange={(e) => setSelectValue(e.target.value)}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>
@@ -220,6 +239,17 @@ export function MasterColumn({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+            {numberField && (
+              <div className="space-y-2">
+                <Label required>{numberField.label}</Label>
+                <Input
+                  type="number"
+                  value={selectValue}
+                  placeholder={numberField.placeholder}
+                  onChange={(e) => setSelectValue(e.target.value)}
+                />
               </div>
             )}
           </div>

@@ -11,6 +11,7 @@ namespace MotorInsurance.Application.Common.Interfaces;
 public interface IAppDbContext
 {
     DbSet<Customer> Customers { get; }
+    DbSet<CustomerTitle> CustomerTitles { get; }
     DbSet<Vehicle> Vehicles { get; }
     DbSet<VehicleBrand> VehicleBrands { get; }
     DbSet<VehicleModel> VehicleModels { get; }
@@ -22,6 +23,9 @@ public interface IAppDbContext
     DbSet<Subdistrict> Subdistricts { get; }
     DbSet<Quotation> Quotations { get; }
     DbSet<QuotationDriver> QuotationDrivers { get; }
+    DbSet<Rider> Riders { get; }
+    DbSet<QuotationRider> QuotationRiders { get; }
+    DbSet<PolicyRider> PolicyRiders { get; }
     DbSet<Policy> Policies { get; }
     DbSet<Endorsement> Endorsements { get; }
     DbSet<Claim> Claims { get; }

@@ -10,5 +10,6 @@ internal static class PolicyMapping
         p.Id, p.PolicyNo, p.CustomerId, p.Customer.FullName,
         p.VehicleId, p.Vehicle.RegistrationNo,
         p.Status.ToString(), p.CoverageType.ToString(),
-        p.SumInsured, p.Premium, p.EffectiveDate, p.ExpiryDate, p.PreviousPolicyId);
+        p.SumInsured, p.Premium, p.BasePremium, p.NcbPercent, p.Deductible,
+        p.EffectiveDate, p.ExpiryDate, p.PreviousPolicyId);
 }

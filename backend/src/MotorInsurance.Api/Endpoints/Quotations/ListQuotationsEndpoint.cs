@@ -10,7 +10,8 @@ namespace MotorInsurance.Api.Endpoints.Quotations;
 public record QuotationDto(
     long Id, string QuotationNo, long CustomerId, string CustomerName,
     long VehicleId, string VehicleRegistration, string CoverageType,
-    decimal SumInsured, decimal Premium, DateOnly ValidUntil);
+    decimal SumInsured, decimal Premium, DateOnly ValidUntil,
+    decimal BasePremium, int NcbPercent, decimal Deductible, IReadOnlyList<string> Riders);
 
 public class ListQuotationsRequest
 {
@@ -54,13 +55,16 @@ public class ListQuotationsEndpoint : Endpoint<ListQuotationsRequest, PagedResul
                 q.VehicleId,
                 VehicleRegistration = q.Vehicle.RegistrationNo,
                 q.CoverageType, q.SumInsured, q.Premium, q.ValidUntil,
+                q.BasePremium, q.NcbPercent, q.Deductible,
+                Riders = q.Riders.Select(x => x.Rider.Name).ToList(),
             })
             .ToPagedResultAsync(
                 r.Page, r.PageSize,
                 x => new QuotationDto(
                     x.Id, x.QuotationNo, x.CustomerId, x.CustomerName,
                     x.VehicleId, x.VehicleRegistration, x.CoverageType.ToString(),
-                    x.SumInsured, x.Premium, x.ValidUntil),
+                    x.SumInsured, x.Premium, x.ValidUntil,
+                    x.BasePremium, x.NcbPercent, x.Deductible, x.Riders),
                 ct);
     }
 }

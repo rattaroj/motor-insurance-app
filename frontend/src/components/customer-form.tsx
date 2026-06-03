@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { TITLE_OPTIONS } from '@/lib/api/insuranceApi';
+import { useGetCustomerTitlesQuery } from '@/lib/api/insuranceApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -65,6 +65,7 @@ interface CustomerFormProps {
  */
 export function CustomerForm({ mode, initial, submitting, onSubmit }: CustomerFormProps) {
   const [v, setV] = useState<CustomerFormValues>(initial ?? emptyCustomerForm);
+  const { data: titles } = useGetCustomerTitlesQuery();
   useEffect(() => {
     if (initial) setV(initial);
   }, [initial]);
@@ -96,9 +97,9 @@ export function CustomerForm({ mode, initial, submitting, onSubmit }: CustomerFo
               <SelectValue placeholder="คำนำหน้า" />
             </SelectTrigger>
             <SelectContent>
-              {TITLE_OPTIONS.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {t}
+              {(titles ?? []).map((t) => (
+                <SelectItem key={t.id} value={t.name}>
+                  {t.name}
                 </SelectItem>
               ))}
             </SelectContent>

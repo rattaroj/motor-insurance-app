@@ -54,6 +54,18 @@ public class VehicleConfiguration : IEntityTypeConfiguration<Vehicle>
     }
 }
 
+public class CustomerTitleConfiguration : IEntityTypeConfiguration<CustomerTitle>
+{
+    public void Configure(EntityTypeBuilder<CustomerTitle> b)
+    {
+        b.ToTable("customer_title");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id");
+        b.Property(x => x.Name).HasColumnName("name").HasMaxLength(20).IsRequired();
+        b.HasIndex(x => x.Name).IsUnique();
+    }
+}
+
 public class VehicleBrandConfiguration : IEntityTypeConfiguration<VehicleBrand>
 {
     public void Configure(EntityTypeBuilder<VehicleBrand> b)
@@ -239,11 +251,57 @@ public class QuotationConfiguration : IEntityTypeConfiguration<Quotation>
         CoverageConverter.Apply(b.Property(x => x.CoverageType));
         b.Property(x => x.SumInsured).HasColumnName("sum_insured").HasColumnType("decimal(18,2)");
         b.Property(x => x.Premium).HasColumnName("premium").HasColumnType("decimal(18,2)");
+        b.Property(x => x.BasePremium).HasColumnName("base_premium").HasColumnType("decimal(18,2)");
+        b.Property(x => x.NcbPercent).HasColumnName("ncb_percent");
+        b.Property(x => x.Deductible).HasColumnName("deductible").HasColumnType("decimal(18,2)");
         b.Property(x => x.ValidUntil).HasColumnName("valid_until");
         b.Property(x => x.CreatedAt).HasColumnName("created_at");
         b.HasIndex(x => x.QuotationNo).IsUnique();
         b.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.Vehicle).WithMany().HasForeignKey(x => x.VehicleId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class RiderConfiguration : IEntityTypeConfiguration<Rider>
+{
+    public void Configure(EntityTypeBuilder<Rider> b)
+    {
+        b.ToTable("rider");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id");
+        b.Property(x => x.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
+        b.Property(x => x.Premium).HasColumnName("premium").HasColumnType("decimal(18,2)");
+        b.HasIndex(x => x.Name).IsUnique();
+    }
+}
+
+public class QuotationRiderConfiguration : IEntityTypeConfiguration<QuotationRider>
+{
+    public void Configure(EntityTypeBuilder<QuotationRider> b)
+    {
+        b.ToTable("quotation_rider");
+        b.HasKey(x => new { x.QuotationId, x.RiderId });
+        b.Property(x => x.QuotationId).HasColumnName("quotation_id");
+        b.Property(x => x.RiderId).HasColumnName("rider_id");
+        b.HasOne(x => x.Quotation).WithMany(q => q.Riders)
+            .HasForeignKey(x => x.QuotationId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(x => x.Rider).WithMany()
+            .HasForeignKey(x => x.RiderId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class PolicyRiderConfiguration : IEntityTypeConfiguration<PolicyRider>
+{
+    public void Configure(EntityTypeBuilder<PolicyRider> b)
+    {
+        b.ToTable("policy_rider");
+        b.HasKey(x => new { x.PolicyId, x.RiderId });
+        b.Property(x => x.PolicyId).HasColumnName("policy_id");
+        b.Property(x => x.RiderId).HasColumnName("rider_id");
+        b.HasOne(x => x.Policy).WithMany(p => p.Riders)
+            .HasForeignKey(x => x.PolicyId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(x => x.Rider).WithMany()
+            .HasForeignKey(x => x.RiderId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -307,6 +365,9 @@ public class PolicyConfiguration : IEntityTypeConfiguration<Policy>
         CoverageConverter.Apply(b.Property(x => x.CoverageType));
         b.Property(x => x.SumInsured).HasColumnName("sum_insured").HasColumnType("decimal(18,2)");
         b.Property(x => x.Premium).HasColumnName("premium").HasColumnType("decimal(18,2)");
+        b.Property(x => x.BasePremium).HasColumnName("base_premium").HasColumnType("decimal(18,2)");
+        b.Property(x => x.NcbPercent).HasColumnName("ncb_percent");
+        b.Property(x => x.Deductible).HasColumnName("deductible").HasColumnType("decimal(18,2)");
         b.Property(x => x.EffectiveDate).HasColumnName("effective_date");
         b.Property(x => x.ExpiryDate).HasColumnName("expiry_date");
         b.Property(x => x.PreviousPolicyId).HasColumnName("previous_policy_id");

@@ -44,9 +44,16 @@ public class RenewPolicyEndpoint : Endpoint<RenewPolicyRequest, RenewPolicyRespo
 
     public override async Task HandleAsync(RenewPolicyRequest r, CancellationToken ct)
     {
-        var policyId = Route<long>("policyId");
+        var renewalId = await RenewAsync(Route<long>("policyId"), r, ct);
+        await Send.ResponseAsync(new RenewPolicyResponse(renewalId), 201, ct);
+    }
 
-        var prev = await _db.Policies.FirstOrDefaultAsync(p => p.Id == policyId, ct)
+    /// <summary>Core logic, separated so it is unit-testable without the HTTP layer.</summary>
+    public async Task<long> RenewAsync(long policyId, RenewPolicyRequest r, CancellationToken ct)
+    {
+        var prev = await _db.Policies
+            .Include(p => p.Riders)
+            .FirstOrDefaultAsync(p => p.Id == policyId, ct)
             ?? throw new NotFoundException(nameof(Policy), policyId);
 
         if (prev.Status != PolicyStatus.Active)
@@ -67,6 +74,19 @@ public class RenewPolicyEndpoint : Endpoint<RenewPolicyRequest, RenewPolicyRespo
         var sumInsured = r.AdjustedSumInsured ?? prev.SumInsured;
         var newEffective = prev.ExpiryDate.Value.AddDays(1);
 
+        // No-claim bonus: a claim-free previous year bumps the NCB step up; any (non-rejected)
+        // claim resets it. The deductible and selected riders carry over from the previous policy.
+        var hadClaims = await _db.Claims.AnyAsync(
+            c => c.PolicyId == prev.Id && c.Status != ClaimStatus.Rejected, ct);
+        var newNcb = hadClaims
+            ? PremiumCalculator.StepDownNcb(prev.NcbPercent)
+            : PremiumCalculator.StepUpNcb(prev.NcbPercent);
+        var riderIds = prev.Riders.Select(pr => pr.RiderId).ToList();
+
+        var rating = await PremiumRatingService.RateAsync(
+            _db, newEffective.Year, prev.VehicleId, prev.CoverageType, sumInsured,
+            newNcb, prev.Deductible, riderIds, ct);
+
         var renewal = new Policy
         {
             PolicyNo = await _docNo.NextAsync("POL", ct),
@@ -76,11 +96,15 @@ public class RenewPolicyEndpoint : Endpoint<RenewPolicyRequest, RenewPolicyRespo
             Status = PolicyStatus.Issued,
             CoverageType = prev.CoverageType,
             SumInsured = sumInsured,
-            Premium = PremiumCalculator.Calculate(prev.CoverageType, sumInsured),
+            BasePremium = rating.Breakdown.BasePremium,
+            Premium = rating.Breakdown.NetPremium,
+            NcbPercent = newNcb,
+            Deductible = prev.Deductible,
             EffectiveDate = newEffective,
             ExpiryDate = newEffective.AddYears(1),
             PreviousPolicyId = prev.Id,
             CreatedAt = _clock.UtcNow,
+            Riders = riderIds.Select(id => new PolicyRider { RiderId = id }).ToList(),
         };
         _db.Policies.Add(renewal);
 
@@ -95,6 +119,6 @@ public class RenewPolicyEndpoint : Endpoint<RenewPolicyRequest, RenewPolicyRespo
         });
 
         await _db.SaveChangesAsync(ct);
-        await Send.ResponseAsync(new RenewPolicyResponse(renewal.Id), 201, ct);
+        return renewal.Id;
     }
 }

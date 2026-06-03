@@ -12,3 +12,6 @@ public record IdResponse(long Id);
 public record GeoOptionDto(long Id, string NameTh, string NameEn);
 public record SubdistrictOptionDto(long Id, string NameTh, string NameEn, long PostalCodeId, string PostalCode);
 public record PostalCodeOptionDto(long Id, string Code);
+
+// Add-on rider option carries its flat premium (used by the quotation form + master CRUD).
+public record RiderDto(long Id, string Name, decimal Premium);

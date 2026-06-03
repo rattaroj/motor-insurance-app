@@ -58,6 +58,13 @@ public class Vehicle : BaseEntity
     public VehicleModelYear ModelYear { get; set; } = default!;
 }
 
+/// <summary>Customer title (คำนำหน้าชื่อ) master — governs the title select options.</summary>
+public class CustomerTitle
+{
+    public long Id { get; set; }
+    public string Name { get; set; } = default!;
+}
+
 // ----- Vehicle master data (cascading lookups; no audit columns) -----
 public class VehicleBrand
 {
@@ -139,12 +146,18 @@ public class Quotation : BaseEntity
     public long VehicleId { get; set; }
     public CoverageType CoverageType { get; set; }
     public decimal SumInsured { get; set; }
+    /// <summary>Net premium (after NCB/deductible, plus riders). See <see cref="BasePremium"/>.</summary>
     public decimal Premium { get; set; }
+    /// <summary>Pre-discount base premium (sum insured × coverage rate) — the start of the breakdown.</summary>
+    public decimal BasePremium { get; set; }
+    public int NcbPercent { get; set; }          // ส่วนลดประวัติดี: 0/20/30/40/50
+    public decimal Deductible { get; set; }       // ค่าเสียหายส่วนแรก
     public DateOnly ValidUntil { get; set; }
     public Customer Customer { get; set; } = default!;
     public Vehicle Vehicle { get; set; } = default!;
     // Named drivers (new-law requirement): 1–5 per quotation, each with an ID-card image.
     public ICollection<QuotationDriver> Drivers { get; set; } = new List<QuotationDriver>();
+    public ICollection<QuotationRider> Riders { get; set; } = new List<QuotationRider>();
 }
 
 /// <summary>A named driver declared on a quotation (max 5), with an attached ID-card image.</summary>
@@ -166,7 +179,12 @@ public class Policy : AuditableEntity
     public PolicyStatus Status { get; set; }
     public CoverageType CoverageType { get; set; }
     public decimal SumInsured { get; set; }
+    /// <summary>Net premium (after NCB/deductible, plus riders). See <see cref="BasePremium"/>.</summary>
     public decimal Premium { get; set; }
+    /// <summary>Pre-discount base premium — carried from the quotation/recomputed on renewal.</summary>
+    public decimal BasePremium { get; set; }
+    public int NcbPercent { get; set; }          // ส่วนลดประวัติดี: 0/20/30/40/50
+    public decimal Deductible { get; set; }       // ค่าเสียหายส่วนแรก
     public DateOnly? EffectiveDate { get; set; }
     public DateOnly? ExpiryDate { get; set; }
     public long? PreviousPolicyId { get; set; }   // set on renewal
@@ -178,6 +196,33 @@ public class Policy : AuditableEntity
     public ICollection<Claim> Claims { get; set; } = new List<Claim>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
     public ICollection<Endorsement> Endorsements { get; set; } = new List<Endorsement>();
+    public ICollection<PolicyRider> Riders { get; set; } = new List<PolicyRider>();
+}
+
+/// <summary>Add-on rider (ความคุ้มครองเสริม) master — a selectable coverage with a flat premium.</summary>
+public class Rider
+{
+    public long Id { get; set; }
+    public string Name { get; set; } = default!;
+    public decimal Premium { get; set; }
+}
+
+/// <summary>Join: a rider selected on a quotation.</summary>
+public class QuotationRider
+{
+    public long QuotationId { get; set; }
+    public long RiderId { get; set; }
+    public Quotation Quotation { get; set; } = default!;
+    public Rider Rider { get; set; } = default!;
+}
+
+/// <summary>Join: a rider carried on a policy.</summary>
+public class PolicyRider
+{
+    public long PolicyId { get; set; }
+    public long RiderId { get; set; }
+    public Policy Policy { get; set; } = default!;
+    public Rider Rider { get; set; } = default!;
 }
 
 /// <summary>
