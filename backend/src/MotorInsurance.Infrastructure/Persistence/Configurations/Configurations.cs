@@ -403,11 +403,44 @@ public class ClaimConfiguration : IEntityTypeConfiguration<Claim>
         b.Property(x => x.ClaimedAmount).HasColumnName("claimed_amount").HasColumnType("decimal(18,2)");
         b.Property(x => x.ApprovedAmount).HasColumnName("approved_amount").HasColumnType("decimal(18,2)");
         b.Property(x => x.RejectReason).HasColumnName("reject_reason").HasMaxLength(500);
+        b.Property(x => x.GarageId).HasColumnName("garage_id");
+        b.Property(x => x.SurveyorName).HasColumnName("surveyor_name").HasMaxLength(150);
         b.Property(x => x.RowVersion).HasColumnName("row_version").IsRowVersion();
         b.Property(x => x.CreatedAt).HasColumnName("created_at");
         b.HasIndex(x => x.ClaimNo).IsUnique();
         b.HasOne(x => x.Policy).WithMany(p => p.Claims)
             .HasForeignKey(x => x.PolicyId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.Garage).WithMany()
+            .HasForeignKey(x => x.GarageId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class GarageConfiguration : IEntityTypeConfiguration<Garage>
+{
+    public void Configure(EntityTypeBuilder<Garage> b)
+    {
+        b.ToTable("garage");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id");
+        b.Property(x => x.Name).HasColumnName("name").HasMaxLength(150).IsRequired();
+        b.Property(x => x.Phone).HasColumnName("phone").HasMaxLength(30);
+        b.HasIndex(x => x.Name).IsUnique();
+    }
+}
+
+public class ClaimPhotoConfiguration : IEntityTypeConfiguration<ClaimPhoto>
+{
+    public void Configure(EntityTypeBuilder<ClaimPhoto> b)
+    {
+        b.ToTable("claim_photo");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id");
+        b.Property(x => x.ClaimId).HasColumnName("claim_id");
+        b.Property(x => x.ImagePath).HasColumnName("image_path").HasMaxLength(400).IsRequired();
+        b.Property(x => x.CreatedAt).HasColumnName("created_at");
+        b.HasIndex(x => x.ClaimId);
+        b.HasOne(x => x.Claim).WithMany(c => c.Photos)
+            .HasForeignKey(x => x.ClaimId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

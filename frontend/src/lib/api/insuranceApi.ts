@@ -223,6 +223,42 @@ export interface ClaimDto {
   claimedAmount: number;
   approvedAmount: number | null;
   rejectReason: string | null;
+  garageId: number | null;
+  garageName: string | null;
+  surveyorName: string | null;
+  photoCount: number;
+}
+
+/** Repair-shop (อู่/ศูนย์ซ่อม) master row. */
+export interface Garage {
+  id: number;
+  name: string;
+  phone: string | null;
+}
+
+export interface ClaimPhoto {
+  id: number;
+  imagePath: string;
+  createdAt: string;
+}
+
+/** Claim detail = core claim fields plus garage contact, surveyor and damage photos. */
+export interface ClaimDetailDto {
+  id: number;
+  claimNo: string;
+  policyId: number;
+  policyNo: string;
+  status: ClaimStatus;
+  incidentDate: string;
+  description: string | null;
+  claimedAmount: number;
+  approvedAmount: number | null;
+  rejectReason: string | null;
+  garageId: number | null;
+  garageName: string | null;
+  garagePhone: string | null;
+  surveyorName: string | null;
+  photos: ClaimPhoto[];
 }
 
 export interface PaymentDto {
@@ -352,6 +388,7 @@ export const insuranceApi = createApi({
     'Payment',
     'CustomerTitle',
     'Rider',
+    'Garage',
     'Renewal',
     'VBrand',
     'VModel',
@@ -815,6 +852,44 @@ export const insuranceApi = createApi({
       query: ({ id, reason }) => ({ url: `claims/${id}/reject`, method: 'POST', body: { reason } }),
       invalidatesTags: ['Claim'],
     }),
+    getClaim: build.query<ClaimDetailDto, number>({
+      query: (id) => `claims/${id}`,
+      providesTags: (_r, _e, id) => [{ type: 'Claim', id }],
+    }),
+    assignClaim: build.mutation<void, { id: number; garageId?: number | null; surveyorName?: string | null }>({
+      query: ({ id, garageId, surveyorName }) => ({
+        url: `claims/${id}/assign`,
+        method: 'POST',
+        body: { garageId: garageId ?? null, surveyorName: surveyorName ?? null },
+      }),
+      invalidatesTags: (_r, _e, { id }) => ['Claim', { type: 'Claim', id }],
+    }),
+    uploadClaimPhoto: build.mutation<ClaimPhoto, { id: number; file: File }>({
+      query: ({ id, file }) => {
+        const form = new FormData();
+        form.append('file', file);
+        return { url: `claims/${id}/photos`, method: 'POST', body: form };
+      },
+      invalidatesTags: (_r, _e, { id }) => ['Claim', { type: 'Claim', id }],
+    }),
+
+    // ---------- Garages (repair-shop master) ----------
+    getGarages: build.query<Garage[], void>({
+      query: () => 'lookups/garages',
+      providesTags: ['Garage'],
+    }),
+    createGarage: build.mutation<{ id: number }, { name: string; phone?: string }>({
+      query: (body) => ({ url: 'lookups/garages', method: 'POST', body }),
+      invalidatesTags: ['Garage'],
+    }),
+    updateGarage: build.mutation<void, { id: number; name: string; phone?: string }>({
+      query: ({ id, name, phone }) => ({ url: `lookups/garages/${id}`, method: 'PUT', body: { name, phone } }),
+      invalidatesTags: ['Garage'],
+    }),
+    deleteGarage: build.mutation<void, number>({
+      query: (id) => ({ url: `lookups/garages/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['Garage'],
+    }),
 
     // ---------- Dashboard ----------
     getDashboardSummary: build.query<DashboardSummary, void>({
@@ -904,6 +979,13 @@ export const {
   useAdvanceClaimMutation,
   useApproveClaimMutation,
   useRejectClaimMutation,
+  useGetClaimQuery,
+  useAssignClaimMutation,
+  useUploadClaimPhotoMutation,
+  useGetGaragesQuery,
+  useCreateGarageMutation,
+  useUpdateGarageMutation,
+  useDeleteGarageMutation,
   useGetDashboardSummaryQuery,
   useGetAnalyticsQuery,
 } = insuranceApi;

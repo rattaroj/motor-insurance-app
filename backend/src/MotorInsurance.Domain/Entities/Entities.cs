@@ -252,8 +252,30 @@ public class Claim : AuditableEntity
     public decimal ClaimedAmount { get; set; }
     public decimal? ApprovedAmount { get; set; }
     public string? RejectReason { get; set; }
+    public long? GarageId { get; set; }                  // อู่/ศูนย์ซ่อมที่มอบหมาย
+    public string? SurveyorName { get; set; }            // ผู้สำรวจภัย
     public Policy Policy { get; set; } = default!;
+    public Garage? Garage { get; set; }
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+    public ICollection<ClaimPhoto> Photos { get; set; } = new List<ClaimPhoto>();
+}
+
+/// <summary>Repair-shop (อู่/ศูนย์ซ่อม) master — assignable to a claim.</summary>
+public class Garage
+{
+    public long Id { get; set; }
+    public string Name { get; set; } = default!;
+    public string? Phone { get; set; }
+}
+
+/// <summary>A damage photo attached to a claim (relative path, served via static files).</summary>
+public class ClaimPhoto
+{
+    public long Id { get; set; }
+    public long ClaimId { get; set; }
+    public string ImagePath { get; set; } = default!;
+    public DateTime CreatedAt { get; set; }
+    public Claim Claim { get; set; } = default!;
 }
 
 public class Payment : AuditableEntity

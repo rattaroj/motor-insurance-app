@@ -176,4 +176,16 @@
       DROP TABLE IF EXISTS notification;
     </rollback>
   </changeSet>
+
+  <changeSet id="V017-claim-enhancements" author="rattaroj.nit">
+    <!-- splitStatements="true": each CREATE TABLE must run before the INSERT/FK/ALTER that
+         reference it (SQL Server name resolution). -->
+    <sqlFile path="./scripts/V017__claim_enhancements.sql" relativeToChangelogFile="true" splitStatements="true"/>
+    <rollback>
+      DROP TABLE IF EXISTS claim_photo;
+      ALTER TABLE claim DROP CONSTRAINT fk_claim_garage;
+      ALTER TABLE claim DROP COLUMN garage_id, surveyor_name;
+      DROP TABLE IF EXISTS garage;
+    </rollback>
+  </changeSet>
 </databaseChangeLog>

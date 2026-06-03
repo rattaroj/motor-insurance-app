@@ -26,6 +26,10 @@ import {
   useCreateRiderMutation,
   useUpdateRiderMutation,
   useDeleteRiderMutation,
+  useGetGaragesQuery,
+  useCreateGarageMutation,
+  useUpdateGarageMutation,
+  useDeleteGarageMutation,
   POWERTRAIN_LABELS,
   POWERTRAIN_OPTIONS,
   type Powertrain,
@@ -65,6 +69,11 @@ export default function MasterDataPage() {
   const [createRider] = useCreateRiderMutation();
   const [updateRider] = useUpdateRiderMutation();
   const [deleteRider] = useDeleteRiderMutation();
+
+  const { data: garages } = useGetGaragesQuery();
+  const [createGarage] = useCreateGarageMutation();
+  const [updateGarage] = useUpdateGarageMutation();
+  const [deleteGarage] = useDeleteGarageMutation();
 
   const toItems = (xs?: { id: number; name: string }[]): MasterItem[] =>
     (xs ?? []).map((x) => ({ id: x.id, label: x.name }));
@@ -163,7 +172,7 @@ export default function MasterDataPage() {
 
       <div className="pt-2">
         <h1 className="text-2xl font-semibold tracking-tight">ข้อมูลหลักการรับประกัน</h1>
-        <p className="text-sm text-muted-foreground">คำนำหน้าชื่อลูกค้า และความคุ้มครองเสริม (rider) ที่ใช้คิดเบี้ย</p>
+        <p className="text-sm text-muted-foreground">คำนำหน้าชื่อลูกค้า, ความคุ้มครองเสริม (rider) และอู่/ศูนย์ซ่อมสำหรับเคลม</p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-4">
@@ -190,11 +199,29 @@ export default function MasterDataPage() {
           }))}
           selectedId={null}
           selectable={false}
-          numberField={{ label: 'เบี้ย (บาท)', placeholder: '1000' }}
+          extraField={{ label: 'เบี้ย (บาท)', type: 'number', placeholder: '1000' }}
           onSelect={() => {}}
           onAdd={(v, premium) => createRider({ name: v, premium: Number(premium) }).unwrap()}
           onEdit={(id, v, premium) => updateRider({ id, name: v, premium: Number(premium) }).unwrap()}
           onDelete={(id) => deleteRider(id).unwrap()}
+        />
+
+        <MasterColumn
+          title="อู่/ศูนย์ซ่อม"
+          fieldLabel="ชื่ออู่/ศูนย์ซ่อม"
+          items={(garages ?? []).map((g) => ({
+            id: g.id,
+            label: g.name,
+            meta: g.phone ?? undefined,
+            selectValue: g.phone ?? '',
+          }))}
+          selectedId={null}
+          selectable={false}
+          extraField={{ label: 'โทรศัพท์', type: 'text', required: false, placeholder: '02-xxx-xxxx' }}
+          onSelect={() => {}}
+          onAdd={(v, phone) => createGarage({ name: v, phone: phone || undefined }).unwrap()}
+          onEdit={(id, v, phone) => updateGarage({ id, name: v, phone: phone || undefined }).unwrap()}
+          onDelete={(id) => deleteGarage(id).unwrap()}
         />
       </div>
     </div>

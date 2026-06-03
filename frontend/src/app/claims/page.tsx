@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Plus, ChevronRight, Check, X } from 'lucide-react';
+import { Plus, ChevronRight, Check, X, Wrench, Image as ImageIcon } from 'lucide-react';
 import {
   useGetClaimsQuery,
   useFileClaimMutation,
@@ -29,6 +29,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Can } from '@/components/can';
+import { ClaimManageDialog } from '@/components/claim-manage-dialog';
 import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDate } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
@@ -78,6 +79,7 @@ export default function ClaimsPage() {
   const [approvedAmount, setApprovedAmount] = useState('');
   const [rejectFor, setRejectFor] = useState<ClaimDto | null>(null);
   const [reason, setReason] = useState('');
+  const [manageId, setManageId] = useState<number | null>(null);
 
   const activePolicies = (policies?.items ?? []).filter((p) => p.status === 'Active');
 
@@ -159,6 +161,15 @@ export default function ClaimsPage() {
               const adv = advanceMap[c.status];
               return (
                 <div className="flex justify-end gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setManageId(c.id)}>
+                    <Wrench /> จัดการ
+                    {c.photoCount > 0 && (
+                      <span className="ml-1 inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+                        <ImageIcon className="h-3 w-3" />
+                        {c.photoCount}
+                      </span>
+                    )}
+                  </Button>
                   {adv && (
                     <Can permission={P.ClaimReview}>
                       <Button
@@ -345,6 +356,8 @@ export default function ClaimsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ClaimManageDialog claimId={manageId} onClose={() => setManageId(null)} />
     </div>
   );
 }

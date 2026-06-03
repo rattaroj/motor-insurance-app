@@ -29,6 +29,8 @@ public interface IAppDbContext
     DbSet<Policy> Policies { get; }
     DbSet<Endorsement> Endorsements { get; }
     DbSet<Claim> Claims { get; }
+    DbSet<ClaimPhoto> ClaimPhotos { get; }
+    DbSet<Garage> Garages { get; }
     DbSet<Payment> Payments { get; }
     DbSet<Notification> Notifications { get; }
     DbSet<AppUser> Users { get; }

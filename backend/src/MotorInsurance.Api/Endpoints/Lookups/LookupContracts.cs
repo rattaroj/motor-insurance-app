@@ -15,3 +15,6 @@ public record PostalCodeOptionDto(long Id, string Code);
 
 // Add-on rider option carries its flat premium (used by the quotation form + master CRUD).
 public record RiderDto(long Id, string Name, decimal Premium);
+
+// Repair-shop (อู่/ศูนย์ซ่อม) option for claim assignment + master CRUD.
+public record GarageDto(long Id, string Name, string? Phone);

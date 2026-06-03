@@ -11,7 +11,8 @@ namespace MotorInsurance.Api.Endpoints.Claims;
 public record ClaimDto(
     long Id, string ClaimNo, long PolicyId, string PolicyNo, string Status,
     DateOnly IncidentDate, string? Description, decimal ClaimedAmount,
-    decimal? ApprovedAmount, string? RejectReason);
+    decimal? ApprovedAmount, string? RejectReason,
+    long? GarageId, string? GarageName, string? SurveyorName, int PhotoCount);
 
 public class ListClaimsRequest
 {
@@ -65,12 +66,17 @@ public class ListClaimsEndpoint : Endpoint<ListClaimsRequest, PagedResult<ClaimD
                 c.ClaimedAmount,
                 c.ApprovedAmount,
                 c.RejectReason,
+                c.GarageId,
+                GarageName = c.Garage != null ? c.Garage.Name : null,
+                c.SurveyorName,
+                PhotoCount = c.Photos.Count,
             })
             .ToPagedResultAsync(
                 r.Page, r.PageSize,
                 x => new ClaimDto(
                     x.Id, x.ClaimNo, x.PolicyId, x.PolicyNo, x.Status.ToString(),
-                    x.IncidentDate, x.Description, x.ClaimedAmount, x.ApprovedAmount, x.RejectReason),
+                    x.IncidentDate, x.Description, x.ClaimedAmount, x.ApprovedAmount, x.RejectReason,
+                    x.GarageId, x.GarageName, x.SurveyorName, x.PhotoCount),
                 ct);
     }
 }

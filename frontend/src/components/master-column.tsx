@@ -33,10 +33,13 @@ export interface SelectField {
   options: { value: string; label: string }[];
 }
 
-/** Optional extra number input rendered in the add/edit dialogs (e.g. premium on a rider). */
-export interface NumberField {
+/** Optional extra input rendered in the add/edit dialogs (e.g. premium on a rider, phone on a garage). */
+export interface ExtraField {
   label: string;
+  type?: 'text' | 'number';
   placeholder?: string;
+  /** When false the field is optional (does not block save). Defaults to required. */
+  required?: boolean;
 }
 
 interface Props {
@@ -53,7 +56,7 @@ interface Props {
   disabledHint?: string;
   selectable?: boolean;
   selectField?: SelectField;
-  numberField?: NumberField;
+  extraField?: ExtraField;
 }
 
 export function MasterColumn({
@@ -70,7 +73,7 @@ export function MasterColumn({
   disabledHint = 'เลือกรายการทางซ้ายก่อน',
   selectable = true,
   selectField,
-  numberField,
+  extraField,
 }: Props) {
   const [addOpen, setAddOpen] = useState(false);
   const [value, setValue] = useState('');
@@ -79,8 +82,8 @@ export function MasterColumn({
   const [deleteItem, setDeleteItem] = useState<MasterItem | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Save is blocked until the optional secondary field (select or number) has a value.
-  const selectMissing = (!!selectField || !!numberField) && selectValue === '';
+  // Save is blocked until a required secondary field (select, or a required extra) has a value.
+  const selectMissing = (!!selectField || (!!extraField && extraField.required !== false)) && selectValue === '';
 
   const run = async (fn: () => Promise<unknown>, ok: string, done: () => void) => {
     setBusy(true);
@@ -187,13 +190,13 @@ export function MasterColumn({
                 </Select>
               </div>
             )}
-            {numberField && (
+            {extraField && (
               <div className="space-y-2">
-                <Label required>{numberField.label}</Label>
+                <Label required={extraField.required !== false}>{extraField.label}</Label>
                 <Input
-                  type="number"
+                  type={extraField.type ?? 'text'}
                   value={selectValue}
-                  placeholder={numberField.placeholder}
+                  placeholder={extraField.placeholder}
                   onChange={(e) => setSelectValue(e.target.value)}
                 />
               </div>
@@ -241,13 +244,13 @@ export function MasterColumn({
                 </Select>
               </div>
             )}
-            {numberField && (
+            {extraField && (
               <div className="space-y-2">
-                <Label required>{numberField.label}</Label>
+                <Label required={extraField.required !== false}>{extraField.label}</Label>
                 <Input
-                  type="number"
+                  type={extraField.type ?? 'text'}
                   value={selectValue}
-                  placeholder={numberField.placeholder}
+                  placeholder={extraField.placeholder}
                   onChange={(e) => setSelectValue(e.target.value)}
                 />
               </div>
