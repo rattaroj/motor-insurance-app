@@ -1,9 +1,9 @@
-using System.Globalization;
 using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Api.Authorization;
 using MotorInsurance.Application.Common.Exceptions;
 using MotorInsurance.Application.Common.Interfaces;
+using MotorInsurance.Application.Renewals;
 using MotorInsurance.Domain.Entities;
 using Perms = MotorInsurance.Application.Common.Authorization.Permissions;
 
@@ -17,8 +17,6 @@ public record SendReminderResponse(long NotificationId, string Channel, string R
 /// </summary>
 public class SendRenewalReminderEndpoint : EndpointWithoutRequest<SendReminderResponse>
 {
-    private static readonly CultureInfo Th = CultureInfo.GetCultureInfo("th-TH");
-
     private readonly IAppDbContext _db;
     private readonly INotificationSender _sender;
     private readonly IDateTimeProvider _clock;
@@ -45,31 +43,9 @@ public class SendRenewalReminderEndpoint : EndpointWithoutRequest<SendReminderRe
             .FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException(nameof(Policy), policyId);
 
-        var (channel, recipient) = !string.IsNullOrWhiteSpace(p.Email) ? ("Email", p.Email!)
-            : !string.IsNullOrWhiteSpace(p.Phone) ? ("Sms", p.Phone!)
-            : ("Log", "-");
+        var note = await RenewalReminders.SendAsync(
+            _db, _sender, _clock, policyId, p.PolicyNo, p.Name, p.Email, p.Phone, p.ExpiryDate, ct);
 
-        var expiry = p.ExpiryDate?.ToString("dd/MM/yyyy", Th) ?? "-";
-        var subject = $"แจ้งเตือนต่ออายุกรมธรรม์ {p.PolicyNo}";
-        var body = $"เรียน {p.Name}\nกรมธรรม์เลขที่ {p.PolicyNo} จะหมดอายุวันที่ {expiry} " +
-                   "กรุณาติดต่อเจ้าหน้าที่เพื่อต่ออายุความคุ้มครอง";
-
-        var ok = await _sender.SendAsync(new NotificationMessage(channel, recipient, subject, body), ct);
-
-        var note = new Notification
-        {
-            PolicyId = policyId,
-            Channel = channel,
-            Recipient = recipient,
-            Subject = subject,
-            Body = body,
-            Status = ok ? "Sent" : "Failed",
-            SentAt = ok ? _clock.UtcNow : null,
-            CreatedAt = _clock.UtcNow,
-        };
-        _db.Notifications.Add(note);
-        await _db.SaveChangesAsync(ct);
-
-        Response = new SendReminderResponse(note.Id, channel, recipient, note.Status);
+        Response = new SendReminderResponse(note.Id, note.Channel, note.Recipient, note.Status);
     }
 }

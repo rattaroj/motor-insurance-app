@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Api.Authorization;
 using MotorInsurance.Application.Common.Exceptions;
 using MotorInsurance.Application.Common.Interfaces;
+using MotorInsurance.Application.Notifications;
 using MotorInsurance.Domain.Entities;
 using MotorInsurance.Domain.Enums;
 using MotorInsurance.Domain.StateMachines;
@@ -58,6 +59,25 @@ public class ApproveClaimEndpoint : Endpoint<ApproveClaimRequest>
         });
 
         await _db.SaveChangesAsync(ct);
+        await NotifyApprovedAsync(claim, ct);
         await Send.NoContentAsync(ct);
+    }
+
+    /// <summary>Best-effort "claim approved" notification to the policyholder.</summary>
+    private async Task NotifyApprovedAsync(Claim claim, CancellationToken ct)
+    {
+        var sender = TryResolve<INotificationSender>();
+        if (sender is null) return;
+        try
+        {
+            await NotificationDispatcher.SendToPolicyCustomerAsync(
+                _db, sender, _clock, claim.PolicyId,
+                $"อนุมัติเคลม {claim.ClaimNo}",
+                $"เคลมเลขที่ {claim.ClaimNo} ได้รับอนุมัติเป็นจำนวนเงิน {claim.ApprovedAmount:N2} บาท", ct);
+        }
+        catch
+        {
+            // Best-effort: never block claim approval on a notification failure.
+        }
     }
 }

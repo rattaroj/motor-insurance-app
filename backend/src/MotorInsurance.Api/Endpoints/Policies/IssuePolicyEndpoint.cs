@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Api.Authorization;
 using MotorInsurance.Application.Common.Exceptions;
 using MotorInsurance.Application.Common.Interfaces;
+using MotorInsurance.Application.Notifications;
 using MotorInsurance.Domain.Entities;
 using MotorInsurance.Domain.Enums;
 using Perms = MotorInsurance.Application.Common.Authorization.Permissions;
@@ -43,7 +44,28 @@ public class IssuePolicyEndpoint : Endpoint<IssuePolicyRequest, IssuePolicyRespo
     public override async Task HandleAsync(IssuePolicyRequest r, CancellationToken ct)
     {
         var policyId = await IssueAsync(r, ct);
+        await NotifyIssuedAsync(policyId, ct);
         await Send.ResponseAsync(new IssuePolicyResponse(policyId), 201, ct);
+    }
+
+    /// <summary>Best-effort "policy issued" notification — never lets a send failure break issuance.</summary>
+    private async Task NotifyIssuedAsync(long policyId, CancellationToken ct)
+    {
+        var sender = TryResolve<INotificationSender>();
+        if (sender is null) return;
+        try
+        {
+            var policyNo = await _db.Policies.AsNoTracking()
+                .Where(p => p.Id == policyId).Select(p => p.PolicyNo).FirstOrDefaultAsync(ct);
+            await NotificationDispatcher.SendToPolicyCustomerAsync(
+                _db, sender, _clock, policyId,
+                $"ออกกรมธรรม์ {policyNo}",
+                $"กรมธรรม์ {policyNo} ได้ออกเรียบร้อยแล้ว กรุณาชำระเบี้ยเพื่อเปิดความคุ้มครอง", ct);
+        }
+        catch
+        {
+            // Notification is a side benefit; swallow so issuance still succeeds.
+        }
     }
 
     /// <summary>Core logic, separated so it is unit-testable without the HTTP layer.</summary>

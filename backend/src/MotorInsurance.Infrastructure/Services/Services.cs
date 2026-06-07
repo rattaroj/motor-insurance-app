@@ -1,6 +1,11 @@
 using System.Data;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Mail;
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -160,6 +165,54 @@ public class PolicyHistoryReader : IPolicyHistoryReader
 }
 
 /// <summary>
+/// Reads claim aging via TemporalAll(): for each open claim, finds when it entered its current
+/// status (the start of the contiguous tail of history rows sharing that status).
+/// </summary>
+public class ClaimAgingReader : IClaimAgingReader
+{
+    private readonly AppDbContext _db;
+    public ClaimAgingReader(AppDbContext db) => _db = db;
+
+    public async Task<IReadOnlyList<ClaimAgingRow>> GetOpenAsync(CancellationToken ct = default)
+    {
+        var open = await _db.Claims.AsNoTracking()
+            .Where(c => c.Status != Domain.Enums.ClaimStatus.Closed)
+            .Select(c => new
+            {
+                c.Id, c.ClaimNo, PolicyNo = c.Policy.PolicyNo, c.Status, c.ClaimedAmount,
+            })
+            .ToListAsync(ct);
+        if (open.Count == 0) return Array.Empty<ClaimAgingRow>();
+
+        var ids = open.Select(o => o.Id).ToList();
+        var history = await _db.Claims.TemporalAll().AsNoTracking()
+            .Where(c => ids.Contains(c.Id))
+            .Select(c => new { c.Id, c.Status, ValidFrom = EF.Property<DateTime>(c, "ValidFrom") })
+            .ToListAsync(ct);
+
+        var byClaim = history
+            .GroupBy(h => h.Id)
+            .ToDictionary(g => g.Key, g => g.OrderBy(x => x.ValidFrom).ToList());
+
+        var result = new List<ClaimAgingRow>(open.Count);
+        foreach (var o in open)
+        {
+            var rows = byClaim.TryGetValue(o.Id, out var l) ? l : new();
+            // Walk back from the latest version while the status matches → start of current status.
+            var statusSince = rows.Count > 0 ? rows[^1].ValidFrom : DateTime.UtcNow;
+            for (var i = rows.Count - 1; i >= 0; i--)
+            {
+                if (rows[i].Status == o.Status) statusSince = rows[i].ValidFrom;
+                else break;
+            }
+            result.Add(new ClaimAgingRow(o.Id, o.ClaimNo, o.PolicyNo, o.Status, o.ClaimedAmount, statusSince));
+        }
+
+        return result;
+    }
+}
+
+/// <summary>
 /// Dev-grade notification sender: logs the message (the caller persists the record in the
 /// notification table). Replace with an SMTP/LINE implementation for real delivery.
 /// </summary>
@@ -175,6 +228,124 @@ public class LoggingNotificationSender : INotificationSender
     }
 }
 
+/// <summary>Notification delivery settings (section "Notifications"). Channel selects the sender.</summary>
+public class NotificationSettings
+{
+    /// <summary>"Log" (default), "Smtp", or "Line".</summary>
+    public string Channel { get; set; } = "Log";
+    public SmtpSettings Smtp { get; set; } = new();
+    public LineSettings Line { get; set; } = new();
+}
+
+public class SmtpSettings
+{
+    public string Host { get; set; } = "localhost";
+    public int Port { get; set; } = 25;
+    public string? User { get; set; }
+    public string? Password { get; set; }
+    public string From { get; set; } = "noreply@motor.local";
+    public bool UseSsl { get; set; }
+}
+
+public class LineSettings
+{
+    /// <summary>LINE Notify bearer token; messages broadcast to that token's target.</summary>
+    public string? Token { get; set; }
+}
+
+/// <summary>
+/// SMTP notification sender (System.Net.Mail — no extra dependency). Only delivers to email
+/// recipients (channel "Email"); other channels are skipped (returns false so the caller
+/// records Status=Failed). On any SMTP error it logs and returns false rather than throwing.
+/// </summary>
+public class SmtpNotificationSender : INotificationSender
+{
+    private readonly SmtpSettings _s;
+    private readonly ILogger<SmtpNotificationSender> _log;
+    public SmtpNotificationSender(IOptions<NotificationSettings> opt, ILogger<SmtpNotificationSender> log)
+        => (_s, _log) = (opt.Value.Smtp, log);
+
+    public async Task<bool> SendAsync(NotificationMessage m, CancellationToken ct = default)
+    {
+        if (!string.Equals(m.Channel, "Email", StringComparison.OrdinalIgnoreCase)
+            || string.IsNullOrWhiteSpace(m.Recipient) || m.Recipient == "-")
+        {
+            _log.LogWarning("SMTP sender: no email recipient for channel '{Channel}' — skipping.", m.Channel);
+            return false;
+        }
+
+        try
+        {
+            using var msg = new MailMessage(_s.From, m.Recipient, m.Subject, m.Body)
+            {
+                BodyEncoding = Encoding.UTF8,
+                SubjectEncoding = Encoding.UTF8,
+            };
+            if (m.AttachmentBytes is { Length: > 0 })
+                msg.Attachments.Add(new Attachment(
+                    new MemoryStream(m.AttachmentBytes), m.AttachmentName ?? "document.pdf", "application/pdf"));
+
+            using var client = new SmtpClient(_s.Host, _s.Port) { EnableSsl = _s.UseSsl };
+            if (!string.IsNullOrEmpty(_s.User))
+                client.Credentials = new NetworkCredential(_s.User, _s.Password);
+
+            await client.SendMailAsync(msg, ct);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "SMTP send to {Recipient} failed.", m.Recipient);
+            return false;
+        }
+    }
+}
+
+/// <summary>
+/// LINE notification sender (LINE Notify). Broadcasts the message to the configured token's
+/// target; the message Recipient is informational. Logs + returns false on error/missing token.
+/// </summary>
+public class LineNotificationSender : INotificationSender
+{
+    private const string NotifyUrl = "https://notify-api.line.me/api/notify";
+
+    private readonly IHttpClientFactory _http;
+    private readonly LineSettings _s;
+    private readonly ILogger<LineNotificationSender> _log;
+    public LineNotificationSender(
+        IHttpClientFactory http, IOptions<NotificationSettings> opt, ILogger<LineNotificationSender> log)
+        => (_http, _s, _log) = (http, opt.Value.Line, log);
+
+    public async Task<bool> SendAsync(NotificationMessage m, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(_s.Token))
+        {
+            _log.LogWarning("LINE sender: no token configured — skipping.");
+            return false;
+        }
+
+        try
+        {
+            var client = _http.CreateClient();
+            using var req = new HttpRequestMessage(HttpMethod.Post, NotifyUrl);
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _s.Token);
+            req.Content = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("message", $"{m.Subject}\n{m.Body}"),
+            });
+
+            var resp = await client.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode)
+                _log.LogWarning("LINE send returned {Status}.", (int)resp.StatusCode);
+            return resp.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "LINE send failed.");
+            return false;
+        }
+    }
+}
+
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
@@ -187,7 +358,25 @@ public static class DependencyInjection
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IDocumentNumberGenerator, DocumentNumberGenerator>();
         services.AddScoped<IPolicyHistoryReader, PolicyHistoryReader>();
-        services.AddScoped<INotificationSender, LoggingNotificationSender>();
+        services.AddScoped<IClaimAgingReader, ClaimAgingReader>();
+
+        // Notification delivery: pick the sender from configuration (default = log). The DI seam
+        // means call sites never change when switching channels (CLAUDE.md / README note).
+        services.Configure<NotificationSettings>(config.GetSection("Notifications"));
+        switch (config.GetSection("Notifications")["Channel"]?.Trim().ToLowerInvariant())
+        {
+            case "smtp":
+                services.AddScoped<INotificationSender, SmtpNotificationSender>();
+                break;
+            case "line":
+                services.AddHttpClient();
+                services.AddScoped<INotificationSender, LineNotificationSender>();
+                break;
+            default:
+                services.AddScoped<INotificationSender, LoggingNotificationSender>();
+                break;
+        }
+
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddScoped<ICurrentUser, CurrentUser>();
 

@@ -17,6 +17,9 @@ import {
   CalendarClock,
   UserSquare2,
   Wrench,
+  Bell,
+  Users2,
+  SlidersHorizontal,
   ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
@@ -41,7 +44,9 @@ const nav: NavItem[] = [
   { href: '/renewals', label: 'ต่ออายุ', icon: CalendarClock, permission: P.PolicyRenew },
   { href: '/claims', label: 'เคลม', icon: FileWarning, permission: P.ClaimRead },
   { href: '/payments', label: 'การชำระเงิน', icon: CreditCard, permission: P.PaymentRead },
+  { href: '/notifications', label: 'การแจ้งเตือน', icon: Bell, permission: P.NotificationRead },
   { href: '/reports', label: 'รายงาน', icon: BarChart3, permission: P.DashboardRead },
+  { href: '/admin/users', label: 'ผู้ใช้งานระบบ', icon: Users2, permission: P.UserRead },
   {
     href: '/master',
     label: 'ข้อมูลหลัก',
@@ -52,6 +57,7 @@ const nav: NavItem[] = [
       { href: '/master/titles', label: 'คำนำหน้าชื่อ', icon: UserSquare2 },
       { href: '/master/riders', label: 'ความคุ้มครองเสริม', icon: ShieldPlus },
       { href: '/master/garages', label: 'อู่/ศูนย์ซ่อม', icon: Wrench },
+      { href: '/master/rates', label: 'พิกัดอัตราเบี้ย', icon: SlidersHorizontal },
     ],
   },
 ];

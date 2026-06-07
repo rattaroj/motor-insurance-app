@@ -115,6 +115,28 @@ export interface Rider {
   premium: number;
 }
 
+/** Configurable base-premium rate per coverage type (พิกัดอัตราเบี้ย). */
+export interface PremiumRateDto {
+  id: number;
+  coverage: CoverageType;
+  rate: number;
+  effectiveDate: string;
+}
+
+/** Configurable vehicle-age loading band. */
+export interface AgeLoadingBandDto {
+  id: number;
+  maxAge: number | null;
+  surcharge: number;
+  effectiveDate: string;
+}
+
+/** A tunable scalar rating setting (e.g. deductible relief rate/cap). */
+export interface RatingSettingDto {
+  code: string;
+  value: number;
+}
+
 /** Premium broken down by factor (live preview + create response context). */
 export interface PremiumBreakdown {
   basePremium: number;
@@ -127,6 +149,15 @@ export interface PremiumBreakdown {
 
 /** Allowed no-claim-bonus discount steps (mirrors backend PremiumCalculator.NcbSteps). */
 export const NCB_STEPS = [0, 20, 30, 40, 50] as const;
+
+/** One coverage type's rated breakdown in a side-by-side comparison. */
+export interface CoverageOption {
+  coverageType: CoverageType;
+  breakdown: PremiumBreakdown;
+}
+export interface CompareCoverageResult {
+  options: CoverageOption[];
+}
 
 export interface QuotationDto {
   id: number;
@@ -200,6 +231,15 @@ export interface PolicyHistoryDto {
   validTo: string;
 }
 
+/** One entry in a policy's unified activity timeline. */
+export interface PolicyActivityDto {
+  at: string;
+  type: 'status' | 'endorsement' | 'payment' | 'notification';
+  title: string;
+  detail: string | null;
+  user: string | null;
+}
+
 /** A policy in the proactive renewal worklist (expiring soon, not yet renewed). */
 export interface ExpiringPolicy {
   policyId: number;
@@ -227,6 +267,19 @@ export interface ClaimDto {
   garageName: string | null;
   surveyorName: string | null;
   photoCount: number;
+}
+
+/** An open claim's time-in-status with SLA breach flag (claims aging worklist). */
+export interface ClaimAgingDto {
+  id: number;
+  claimNo: string;
+  policyNo: string;
+  status: ClaimStatus;
+  claimedAmount: number;
+  statusSince: string;
+  daysInStatus: number;
+  slaDays: number;
+  breached: boolean;
 }
 
 /** Repair-shop (อู่/ศูนย์ซ่อม) master row. */
@@ -273,6 +326,40 @@ export interface PaymentDto {
   amount: number;
   paidAt: string | null;
   referenceNo: string | null;
+}
+
+/** A user account with its assigned roles (admin user-management). */
+export interface UserAccountDto {
+  id: number;
+  username: string;
+  email: string;
+  fullName: string;
+  isActive: boolean;
+  lastLoginAt: string | null;
+  roleIds: number[];
+  roles: string[];
+}
+
+/** An assignable role. */
+export interface RoleDto {
+  id: number;
+  code: string;
+  nameTh: string;
+  nameEn: string;
+}
+
+/** A persisted notification (renewal reminder, etc.) shown in the history page. */
+export interface NotificationDto {
+  id: number;
+  policyId: number | null;
+  policyNo: string | null;
+  channel: string;
+  recipient: string;
+  subject: string;
+  body: string;
+  status: string;
+  sentAt: string | null;
+  createdAt: string;
 }
 
 export interface PagedResult<T> {
@@ -390,6 +477,12 @@ export const insuranceApi = createApi({
     'Rider',
     'Garage',
     'Renewal',
+    'Notification',
+    'User',
+    'Role',
+    'RatingRate',
+    'AgeBand',
+    'RatingSetting',
     'VBrand',
     'VModel',
     'VSubmodel',
@@ -691,6 +784,37 @@ export const insuranceApi = createApi({
     >({
       query: (body) => ({ url: 'quotations/preview', method: 'POST', body }),
     }),
+    /** Rate all coverage types side-by-side for one vehicle/sum-insured (no persistence). */
+    compareCoverage: build.mutation<
+      CompareCoverageResult,
+      { vehicleId: number; sumInsured: number; ncbPercent?: number; deductible?: number; riderIds?: number[] }
+    >({
+      query: (body) => ({ url: 'quotations/compare', method: 'POST', body }),
+    }),
+    /** Coverage comparison sheet PDF → object URL. */
+    compareCoverageDocument: build.mutation<
+      string,
+      { vehicleId: number; sumInsured: number; ncbPercent?: number; deductible?: number; riderIds?: number[] }
+    >({
+      query: (body) => ({
+        url: 'quotations/compare/document',
+        method: 'POST',
+        body,
+        responseHandler: (r) => r.blob(),
+      }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
+    }),
+
+    /** Quotation PDF (ใบเสนอราคา) → object URL. */
+    getQuotationDocument: build.mutation<string, number>({
+      query: (id) => ({ url: `quotations/${id}/document`, responseHandler: (r) => r.blob() }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
+    }),
+    /** Email the quotation PDF to the customer. */
+    sendQuotationEmail: build.mutation<{ channel: string; recipient: string; status: string }, number>({
+      query: (id) => ({ url: `quotations/${id}/email`, method: 'POST' }),
+      invalidatesTags: ['Notification'],
+    }),
 
     // ---------- Riders (add-on coverage master) ----------
     getRiders: build.query<Rider[], void>({
@@ -710,6 +834,51 @@ export const insuranceApi = createApi({
       invalidatesTags: ['Rider'],
     }),
 
+    // ---------- Premium rates (configurable rating master) ----------
+    getPremiumRates: build.query<PremiumRateDto[], void>({
+      query: () => 'lookups/premium-rates',
+      providesTags: ['RatingRate'],
+    }),
+    updatePremiumRate: build.mutation<void, { id: number; rate: number }>({
+      query: ({ id, rate }) => ({ url: `lookups/premium-rates/${id}`, method: 'PUT', body: { rate } }),
+      invalidatesTags: ['RatingRate'],
+    }),
+    createPremiumRate: build.mutation<{ id: number }, { coverage: CoverageType; rate: number; effectiveDate: string }>({
+      query: (body) => ({ url: 'lookups/premium-rates', method: 'POST', body }),
+      invalidatesTags: ['RatingRate'],
+    }),
+    getAgeLoadingBands: build.query<AgeLoadingBandDto[], void>({
+      query: () => 'lookups/age-loading-bands',
+      providesTags: ['AgeBand'],
+    }),
+    createAgeBand: build.mutation<
+      { id: number },
+      { maxAge: number | null; surcharge: number; effectiveDate: string }
+    >({
+      query: (body) => ({ url: 'lookups/age-loading-bands', method: 'POST', body }),
+      invalidatesTags: ['AgeBand'],
+    }),
+    updateAgeBand: build.mutation<void, { id: number; maxAge: number | null; surcharge: number }>({
+      query: ({ id, maxAge, surcharge }) => ({
+        url: `lookups/age-loading-bands/${id}`,
+        method: 'PUT',
+        body: { maxAge, surcharge },
+      }),
+      invalidatesTags: ['AgeBand'],
+    }),
+    deleteAgeBand: build.mutation<void, number>({
+      query: (id) => ({ url: `lookups/age-loading-bands/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['AgeBand'],
+    }),
+    getRatingSettings: build.query<RatingSettingDto[], void>({
+      query: () => 'lookups/rating-settings',
+      providesTags: ['RatingSetting'],
+    }),
+    updateRatingSetting: build.mutation<void, { code: string; value: number }>({
+      query: ({ code, value }) => ({ url: `lookups/rating-settings/${code}`, method: 'PUT', body: { value } }),
+      invalidatesTags: ['RatingSetting'],
+    }),
+
     // ---------- Policies ----------
     getPolicies: build.query<
       PagedResult<PolicyDto>,
@@ -724,6 +893,10 @@ export const insuranceApi = createApi({
     }),
     getPolicyHistory: build.query<PolicyHistoryDto[], number>({
       query: (id) => `policies/${id}/history`,
+      providesTags: (_r, _e, id) => [{ type: 'PolicyHistory', id }],
+    }),
+    getPolicyActivity: build.query<PolicyActivityDto[], number>({
+      query: (id) => `policies/${id}/activity`,
       providesTags: (_r, _e, id) => [{ type: 'PolicyHistory', id }],
     }),
     /** Policy schedule PDF (ตารางกรมธรรม์) → object URL (kept serializable in the store). */
@@ -779,6 +952,30 @@ export const insuranceApi = createApi({
       invalidatesTags: (_r, _e, { policyId }) => [
         'Customer',
         'Policy',
+        { type: 'Policy', id: policyId },
+        { type: 'PolicyHistory', id: policyId },
+      ],
+    }),
+    /** Mid-term coverage/sum-insured/rider endorsement with pro-rata premium adjustment. */
+    coverageEndorsement: build.mutation<
+      { endorsementNos: string[]; newPremium: number; premiumDelta: number; paymentNo: string | null },
+      {
+        policyId: number;
+        newCoverageType?: CoverageType;
+        newSumInsured?: number;
+        newRiderIds?: number[];
+        effectiveDate: string;
+        note?: string;
+      }
+    >({
+      query: ({ policyId, ...body }) => ({
+        url: `policies/${policyId}/coverage-endorsement`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (_r, _e, { policyId }) => [
+        'Policy',
+        'Payment',
         { type: 'Policy', id: policyId },
         { type: 'PolicyHistory', id: policyId },
       ],
@@ -856,6 +1053,15 @@ export const insuranceApi = createApi({
       query: (id) => `claims/${id}`,
       providesTags: (_r, _e, id) => [{ type: 'Claim', id }],
     }),
+    getClaimsAging: build.query<ClaimAgingDto[], void>({
+      query: () => 'claims/aging',
+      providesTags: ['Claim'],
+    }),
+    /** Claim settlement letter PDF (จดหมายแจ้งผลสินไหม) → object URL. */
+    getClaimLetter: build.mutation<string, number>({
+      query: (id) => ({ url: `claims/${id}/letter`, responseHandler: (r) => r.blob() }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
+    }),
     assignClaim: build.mutation<void, { id: number; garageId?: number | null; surveyorName?: string | null }>({
       query: ({ id, garageId, surveyorName }) => ({
         url: `claims/${id}/assign`,
@@ -889,6 +1095,58 @@ export const insuranceApi = createApi({
     deleteGarage: build.mutation<void, number>({
       query: (id) => ({ url: `lookups/garages/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Garage'],
+    }),
+
+    // ---------- Notifications (history) ----------
+    getNotifications: build.query<
+      PagedResult<NotificationDto>,
+      { page?: number; pageSize?: number; search?: string; channel?: string; status?: string; policyId?: number } | void
+    >({
+      query: (a) =>
+        `notifications?${qs({
+          page: a?.page,
+          pageSize: a?.pageSize,
+          search: a?.search,
+          channel: a?.channel,
+          status: a?.status,
+          policyId: a?.policyId,
+        })}`,
+      providesTags: ['Notification'],
+    }),
+    resendNotification: build.mutation<{ status: string }, number>({
+      query: (id) => ({ url: `notifications/${id}/resend`, method: 'POST' }),
+      invalidatesTags: ['Notification'],
+    }),
+
+    // ---------- Users & roles (admin) ----------
+    getUsers: build.query<UserAccountDto[], void>({
+      query: () => 'users',
+      providesTags: ['User'],
+    }),
+    getRoles: build.query<RoleDto[], void>({
+      query: () => 'roles',
+      providesTags: ['Role'],
+    }),
+    createUser: build.mutation<
+      { id: number },
+      { username: string; email: string; fullName: string; password: string; roleIds: number[] }
+    >({
+      query: (body) => ({ url: 'users', method: 'POST', body }),
+      invalidatesTags: ['User'],
+    }),
+    updateUser: build.mutation<
+      void,
+      { id: number; email: string; fullName: string; isActive: boolean; roleIds: number[] }
+    >({
+      query: ({ id, ...body }) => ({ url: `users/${id}`, method: 'PUT', body }),
+      invalidatesTags: ['User'],
+    }),
+    resetUserPassword: build.mutation<void, { id: number; password: string }>({
+      query: ({ id, password }) => ({ url: `users/${id}/reset-password`, method: 'POST', body: { password } }),
+    }),
+    deleteUser: build.mutation<void, number>({
+      query: (id) => ({ url: `users/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['User'],
     }),
 
     // ---------- Dashboard ----------
@@ -955,13 +1213,27 @@ export const {
   useGetQuotationsQuery,
   useCreateQuotationMutation,
   usePreviewPremiumMutation,
+  useCompareCoverageMutation,
+  useCompareCoverageDocumentMutation,
+  useGetQuotationDocumentMutation,
+  useSendQuotationEmailMutation,
   useGetRidersQuery,
   useCreateRiderMutation,
   useUpdateRiderMutation,
   useDeleteRiderMutation,
+  useGetPremiumRatesQuery,
+  useUpdatePremiumRateMutation,
+  useCreatePremiumRateMutation,
+  useGetAgeLoadingBandsQuery,
+  useCreateAgeBandMutation,
+  useUpdateAgeBandMutation,
+  useDeleteAgeBandMutation,
+  useGetRatingSettingsQuery,
+  useUpdateRatingSettingMutation,
   useGetPoliciesQuery,
   useGetPolicyQuery,
   useGetPolicyHistoryQuery,
+  useGetPolicyActivityQuery,
   useGetPolicyDocumentMutation,
   useGetPaymentReceiptMutation,
   useGetPromptPayQrMutation,
@@ -972,6 +1244,7 @@ export const {
   useGetExpiringPoliciesQuery,
   useSendRenewalReminderMutation,
   useCreateEndorsementMutation,
+  useCoverageEndorsementMutation,
   useGetPaymentsQuery,
   useSettlePaymentMutation,
   useGetClaimsQuery,
@@ -980,6 +1253,8 @@ export const {
   useApproveClaimMutation,
   useRejectClaimMutation,
   useGetClaimQuery,
+  useGetClaimsAgingQuery,
+  useGetClaimLetterMutation,
   useAssignClaimMutation,
   useUploadClaimPhotoMutation,
   useGetGaragesQuery,
@@ -988,4 +1263,12 @@ export const {
   useDeleteGarageMutation,
   useGetDashboardSummaryQuery,
   useGetAnalyticsQuery,
+  useGetNotificationsQuery,
+  useResendNotificationMutation,
+  useGetUsersQuery,
+  useGetRolesQuery,
+  useCreateUserMutation,
+  useUpdateUserMutation,
+  useResetUserPasswordMutation,
+  useDeleteUserMutation,
 } = insuranceApi;
