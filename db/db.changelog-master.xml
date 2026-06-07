@@ -188,4 +188,43 @@
       DROP TABLE IF EXISTS garage;
     </rollback>
   </changeSet>
+
+  <changeSet id="V018-perm-notification-read" author="rattaroj.nit">
+    <sqlFile path="./scripts/V018__perm_notification_read.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      DELETE FROM role_permission WHERE permission_code = 'notification.read';
+      DELETE FROM permission WHERE code = 'notification.read';
+    </rollback>
+  </changeSet>
+
+  <changeSet id="V019-perm-user-admin" author="rattaroj.nit">
+    <sqlFile path="./scripts/V019__perm_user_admin.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      DELETE FROM role_permission WHERE permission_code IN ('user.read', 'user.manage');
+      DELETE FROM permission WHERE code IN ('user.read', 'user.manage');
+    </rollback>
+  </changeSet>
+
+  <changeSet id="V020-premium-rate" author="rattaroj.nit">
+    <!-- splitStatements="true": the CREATE TABLE must run before the INSERTs that reference it. -->
+    <sqlFile path="./scripts/V020__premium_rate.sql" relativeToChangelogFile="true" splitStatements="true"/>
+    <rollback>
+      DELETE FROM role_permission WHERE permission_code IN ('rating.read', 'rating.manage');
+      DELETE FROM permission WHERE code IN ('rating.read', 'rating.manage');
+      DROP TABLE IF EXISTS premium_rate;
+    </rollback>
+  </changeSet>
+
+  <changeSet id="V021-rate-versioning" author="rattaroj.nit">
+    <!-- splitStatements="true": ALTER/DROP INDEX/CREATE INDEX/CREATE TABLE each need their own batch. -->
+    <sqlFile path="./scripts/V021__rate_versioning.sql" relativeToChangelogFile="true" splitStatements="true"/>
+    <rollback>
+      DROP TABLE IF EXISTS rating_setting;
+      DROP TABLE IF EXISTS age_loading_band;
+      DROP INDEX ux_premium_rate_coverage_eff ON premium_rate;
+      CREATE UNIQUE INDEX ux_premium_rate_coverage ON premium_rate (coverage_type);
+      ALTER TABLE premium_rate DROP CONSTRAINT df_premium_rate_eff;
+      ALTER TABLE premium_rate DROP COLUMN effective_date;
+    </rollback>
+  </changeSet>
 </databaseChangeLog>
