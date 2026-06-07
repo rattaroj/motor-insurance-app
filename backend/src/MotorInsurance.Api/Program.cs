@@ -8,6 +8,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using MotorInsurance.Api;
 using MotorInsurance.Api.Authorization;
+using MotorInsurance.Api.Services;
 using MotorInsurance.Application.Common.Interfaces;
 using MotorInsurance.Application.Common.Models;
 using MotorInsurance.Infrastructure;
@@ -22,6 +23,10 @@ MotorInsurance.Api.Documents.PdfSetup.Configure();
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
+
+// Background policy-lifecycle maintenance (auto-expire + auto-remind). Tunable via "PolicyLifecycle".
+builder.Services.Configure<PolicyLifecycleOptions>(builder.Configuration.GetSection("PolicyLifecycle"));
+builder.Services.AddHostedService<PolicyLifecycleWorker>();
 
 // Local file storage for uploaded driver ID-card images (served via UseStaticFiles below).
 var webRoot = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
