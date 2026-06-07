@@ -31,6 +31,9 @@ public class PolicyIssuanceSliceTests
         public DbSet<Quotation> Quotations => Set<Quotation>();
         public DbSet<QuotationDriver> QuotationDrivers => Set<QuotationDriver>();
         public DbSet<Rider> Riders => Set<Rider>();
+        public DbSet<PremiumRate> PremiumRates => Set<PremiumRate>();
+        public DbSet<AgeLoadingBand> AgeLoadingBands => Set<AgeLoadingBand>();
+        public DbSet<RatingSetting> RatingSettings => Set<RatingSetting>();
         public DbSet<QuotationRider> QuotationRiders => Set<QuotationRider>();
         public DbSet<PolicyRider> PolicyRiders => Set<PolicyRider>();
         public DbSet<Policy> Policies => Set<Policy>();
@@ -59,6 +62,7 @@ public class PolicyIssuanceSliceTests
             mb.Entity<RolePermission>().HasKey(x => new { x.RoleId, x.PermissionCode });
             mb.Entity<QuotationRider>().HasKey(x => new { x.QuotationId, x.RiderId });
             mb.Entity<PolicyRider>().HasKey(x => new { x.PolicyId, x.RiderId });
+            mb.Entity<RatingSetting>().HasKey(x => x.Code);
         }
     }
 

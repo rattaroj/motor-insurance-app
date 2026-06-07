@@ -106,4 +106,59 @@ public class PremiumCalculatorTests
     {
         Assert.Equal(0, PremiumCalculator.StepDownNcb(50));
     }
+
+    // ----- Configurable rate factors (F7) -----
+
+    [Fact]
+    public void DefaultFactors_match_the_builtin_rate()
+    {
+        var input = Input(CoverageType.Type1, 1_000_000m, ageYears: 8, ncb: 30, deductible: 5_000m);
+        var viaDefault = PremiumCalculator.Rate(input, PremiumCalculator.DefaultFactors(CoverageType.Type1));
+        var viaBuiltin = PremiumCalculator.Rate(input);
+        Assert.Equal(viaBuiltin, viaDefault);
+    }
+
+    [Theory]
+    [InlineData(3, 0.00)]   // first band (<= 5)
+    [InlineData(5, 0.00)]   // inclusive upper bound
+    [InlineData(6, 0.20)]   // falls through to the open-ended top band
+    [InlineData(40, 0.20)]
+    public void AgeSurcharge_resolves_the_matching_band(int age, double expected)
+    {
+        var bands = new (int?, decimal)[] { (5, 0.00m), (null, 0.20m) };
+        Assert.Equal((decimal)expected, PremiumCalculator.AgeSurcharge(bands, age));
+    }
+
+    [Fact]
+    public void Rate_uses_configured_coverage_rate_and_age_bands()
+    {
+        // Configured: coverage rate 0.02, age band 0.20 for age > 3.
+        var factors = new RateFactors(
+            CoverageRate: 0.02m,
+            AgeBands: new (int?, decimal)[] { (3, 0.00m), (null, 0.20m) },
+            DeductibleReliefRate: 0.5m,
+            DeductibleReliefCap: 0.20m);
+
+        var b = PremiumCalculator.Rate(Input(CoverageType.Type1, 1_000_000m, ageYears: 4), factors);
+
+        Assert.Equal(20_000m, b.BasePremium);        // 1,000,000 * 0.02
+        Assert.Equal(4_000m, b.VehicleAgeLoading);   // 20,000 * 0.20
+        Assert.Equal(24_000m, b.NetPremium);
+    }
+
+    [Fact]
+    public void Rate_uses_configured_deductible_relief()
+    {
+        // Relief rate 1.0 capped at 50% of base.
+        var factors = PremiumCalculator.DefaultFactors(CoverageType.Type1) with
+        {
+            DeductibleReliefRate = 1.0m,
+            DeductibleReliefCap = 0.5m,
+        };
+
+        var b = PremiumCalculator.Rate(Input(CoverageType.Type1, 1_000_000m, deductible: 100_000m), factors);
+
+        // min(100,000 * 1.0, 45,000 * 0.5) = 22,500
+        Assert.Equal(22_500m, b.DeductibleDiscount);
+    }
 }
