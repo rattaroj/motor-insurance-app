@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Trash2, Upload, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Upload, Check, GitCompareArrows, Download } from 'lucide-react';
 import {
   useCreateQuotationMutation,
   usePreviewPremiumMutation,
+  useCompareCoverageMutation,
+  useCompareCoverageDocumentMutation,
   useGetCustomersQuery,
   useGetVehiclesQuery,
   useGetRidersQuery,
@@ -20,11 +22,26 @@ import {
 import { ImagePreview } from '@/components/image-preview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { apiError, cn, fmtBaht } from '@/lib/utils';
+import { apiError, cn, fmtBaht, saveUrl } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
+
+const COVERAGE_LABEL: Record<CoverageType, string> = {
+  Type1: 'ชั้น 1',
+  Type2Plus: 'ชั้น 2+',
+  Type3Plus: 'ชั้น 3+',
+  Type3: 'ชั้น 3',
+};
 
 const COVERAGES: { value: CoverageType; label: string }[] = [
   { value: 'Type1', label: 'ชั้น 1' },
@@ -69,9 +86,38 @@ export default function NewQuotationPage() {
 
   const { data: riders } = useGetRidersQuery();
   const [previewPremium, { data: breakdown, isLoading: previewing }] = usePreviewPremiumMutation();
+  const [compareCoverage, { data: comparison, isLoading: comparing }] = useCompareCoverageMutation();
+  const [compareDocument, { isLoading: downloadingCompare }] = useCompareCoverageDocumentMutation();
+  const [compareOpen, setCompareOpen] = useState(false);
 
   const toggleRider = (id: number) =>
     setRiderIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+
+  // Coverage comparison: rate all four classes for the current vehicle/sum-insured.
+  const canCompare = !!form.vehicleId && Number(form.sumInsured) > 0;
+  const compareArgs = () => ({
+    vehicleId: Number(form.vehicleId),
+    sumInsured: Number(form.sumInsured),
+    ncbPercent: Number(form.ncbPercent),
+    deductible: Number(form.deductible),
+    riderIds,
+  });
+  const openCompare = async () => {
+    setCompareOpen(true);
+    try {
+      await compareCoverage(compareArgs()).unwrap();
+    } catch (e) {
+      toast.error(apiError(e));
+    }
+  };
+  const downloadCompare = async () => {
+    try {
+      const url = await compareDocument(compareArgs()).unwrap();
+      saveUrl(url, `เปรียบเทียบความคุ้มครอง.pdf`);
+    } catch (e) {
+      toast.error(apiError(e));
+    }
+  };
 
   // Live premium preview: re-rate (debounced) whenever a pricing input changes.
   const canPreview = !!form.vehicleId && !!form.coverageType && Number(form.sumInsured) > 0;
@@ -295,7 +341,18 @@ export default function NewQuotationPage() {
           <div className="rounded-md border bg-muted/30 p-3">
             <div className="mb-2 flex items-center justify-between">
               <Label className="text-sm">สรุปเบี้ยประกัน</Label>
-              {previewing && <span className="text-xs text-muted-foreground">กำลังคำนวณ…</span>}
+              <div className="flex items-center gap-2">
+                {previewing && <span className="text-xs text-muted-foreground">กำลังคำนวณ…</span>}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!canCompare}
+                  onClick={openCompare}
+                >
+                  <GitCompareArrows /> เปรียบเทียบทุกชั้น
+                </Button>
+              </div>
             </div>
             {!canPreview ? (
               <p className="text-sm text-muted-foreground">เลือกรถ ชั้นความคุ้มครอง และทุนประกัน เพื่อคำนวณเบี้ย</p>
@@ -437,6 +494,57 @@ export default function NewQuotationPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Coverage comparison */}
+      <Dialog open={compareOpen} onOpenChange={setCompareOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>เปรียบเทียบความคุ้มครอง</DialogTitle>
+            <DialogDescription>
+              เบี้ยสุทธิของแต่ละชั้นความคุ้มครอง สำหรับทุนประกัน {fmtBaht(Number(form.sumInsured) || 0)} · NCB{' '}
+              {form.ncbPercent}%
+            </DialogDescription>
+          </DialogHeader>
+
+          {comparing ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">กำลังคำนวณ…</p>
+          ) : comparison ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {comparison.options.map((o) => (
+                <button
+                  key={o.coverageType}
+                  type="button"
+                  onClick={() => {
+                    setForm((f) => ({ ...f, coverageType: o.coverageType }));
+                    setCompareOpen(false);
+                  }}
+                  className={cn(
+                    'rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-primary/5',
+                    form.coverageType === o.coverageType && 'border-primary bg-primary/5',
+                  )}
+                >
+                  <p className="text-sm font-medium">{COVERAGE_LABEL[o.coverageType]}</p>
+                  <p className="mt-1 text-lg font-semibold tabular-nums text-primary">
+                    {fmtBaht(o.breakdown.netPremium)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">ฐาน {fmtBaht(o.breakdown.basePremium)}</p>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-muted-foreground">—</p>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompareOpen(false)}>
+              ปิด
+            </Button>
+            <Button disabled={!comparison || downloadingCompare} onClick={downloadCompare}>
+              <Download /> {downloadingCompare ? 'กำลังสร้าง…' : 'ดาวน์โหลด PDF'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

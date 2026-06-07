@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Plus, FileSignature } from 'lucide-react';
+import { Plus, FileSignature, FileDown, Mail } from 'lucide-react';
 import {
   useGetQuotationsQuery,
   useIssuePolicyMutation,
+  useGetQuotationDocumentMutation,
+  useSendQuotationEmailMutation,
   type CoverageType,
   type QuotationDto,
 } from '@/lib/api/insuranceApi';
@@ -24,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Can } from '@/components/can';
 import { P } from '@/lib/auth/permissions';
-import { apiError, fmtBaht, fmtDate } from '@/lib/utils';
+import { apiError, fmtBaht, fmtDate, saveUrl } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
 
 const COVERAGES: { value: CoverageType; label: string }[] = [
@@ -44,9 +46,29 @@ export default function QuotationsPage() {
   const search = useDebouncedValue(searchInput, 300);
   const { data, isFetching } = useGetQuotationsQuery({ page, pageSize: PAGE_SIZE, search });
   const [issuePolicy, { isLoading: issuing }] = useIssuePolicyMutation();
+  const [getPdf] = useGetQuotationDocumentMutation();
+  const [sendEmail, { isLoading: emailing }] = useSendQuotationEmailMutation();
 
   const [issueFor, setIssueFor] = useState<QuotationDto | null>(null);
   const [effectiveDate, setEffectiveDate] = useState(today());
+
+  const downloadPdf = async (q: QuotationDto) => {
+    try {
+      const url = await getPdf(q.id).unwrap();
+      saveUrl(url, `${q.quotationNo}.pdf`);
+    } catch (e) {
+      toast.error(apiError(e));
+    }
+  };
+
+  const emailQuote = async (q: QuotationDto) => {
+    try {
+      const res = await sendEmail(q.id).unwrap();
+      toast.success('ส่งอีเมลใบเสนอราคาแล้ว', { description: `${res.recipient} (${res.status})` });
+    } catch (e) {
+      toast.error(apiError(e));
+    }
+  };
 
   const submitIssue = async () => {
     if (!issueFor) return;
@@ -101,18 +123,28 @@ export default function QuotationsPage() {
             header: 'จัดการ',
             className: 'text-right',
             cell: (q) => (
-              <Can permission={P.PolicyIssue}>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setIssueFor(q);
-                    setEffectiveDate(today());
-                  }}
-                >
-                  <FileSignature /> ออกกรมธรรม์
+              <div className="flex justify-end gap-1">
+                <Button size="sm" variant="ghost" aria-label="PDF" onClick={() => downloadPdf(q)}>
+                  <FileDown />
                 </Button>
-              </Can>
+                <Can permission={P.QuotationWrite}>
+                  <Button size="sm" variant="ghost" aria-label="ส่งอีเมล" disabled={emailing} onClick={() => emailQuote(q)}>
+                    <Mail />
+                  </Button>
+                </Can>
+                <Can permission={P.PolicyIssue}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setIssueFor(q);
+                      setEffectiveDate(today());
+                    }}
+                  >
+                    <FileSignature /> ออกกรมธรรม์
+                  </Button>
+                </Can>
+              </div>
             ),
           },
         ]}
