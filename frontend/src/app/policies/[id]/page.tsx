@@ -3,21 +3,25 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Plus, Wallet, FileSignature, FileDown, Receipt } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Plus, Wallet, FileSignature, FileDown, Receipt, SlidersHorizontal, Check } from 'lucide-react';
 import {
   useGetPolicyQuery,
   useGetPolicyHistoryQuery,
+  useGetPolicyActivityQuery,
   useGetPaymentsQuery,
   useGetClaimsQuery,
+  useGetRidersQuery,
   useActivatePolicyMutation,
   useCancelPolicyMutation,
   useRenewPolicyMutation,
   useSettlePaymentMutation,
   useFileClaimMutation,
   useCreateEndorsementMutation,
+  useCoverageEndorsementMutation,
   useGetPolicyDocumentMutation,
   useGetPaymentReceiptMutation,
   fileUrl,
+  type CoverageType,
 } from '@/lib/api/insuranceApi';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
@@ -34,15 +38,23 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Can } from '@/components/can';
 import { PromptPayButton } from '@/components/promptpay-button';
 import { ImageGallery } from '@/components/image-preview';
 import { P } from '@/lib/auth/permissions';
-import { apiError, fmtBaht, fmtDate, fmtDateTime, saveUrl } from '@/lib/utils';
+import { apiError, cn, fmtBaht, fmtDate, fmtDateTime, saveUrl } from '@/lib/utils';
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+const COVERAGES: { value: CoverageType; label: string }[] = [
+  { value: 'Type1', label: 'ชั้น 1' },
+  { value: 'Type2Plus', label: 'ชั้น 2+' },
+  { value: 'Type3Plus', label: 'ชั้น 3+' },
+  { value: 'Type3', label: 'ชั้น 3' },
+];
 
 export default function PolicyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -50,6 +62,7 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
 
   const { data: policy, isLoading } = useGetPolicyQuery(policyId);
   const { data: history } = useGetPolicyHistoryQuery(policyId);
+  const { data: activity } = useGetPolicyActivityQuery(policyId);
   const { data: payments } = useGetPaymentsQuery({ policyId, pageSize: 100 });
   const { data: claims } = useGetClaimsQuery({ policyId, pageSize: 100 });
 
@@ -59,8 +72,10 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
   const [settle, { isLoading: settling }] = useSettlePaymentMutation();
   const [fileClaim, { isLoading: filing }] = useFileClaimMutation();
   const [endorse, { isLoading: endorsing }] = useCreateEndorsementMutation();
+  const [coverageEndorse, { isLoading: coverageEndorsing }] = useCoverageEndorsementMutation();
   const [getPolicyPdf, { isLoading: pdfLoading }] = useGetPolicyDocumentMutation();
   const [getReceipt] = useGetPaymentReceiptMutation();
+  const { data: riders } = useGetRidersQuery();
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState('');
@@ -70,6 +85,14 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
   const [claimForm, setClaimForm] = useState({ incidentDate: today(), description: '', claimedAmount: '' });
   const [endorseOpen, setEndorseOpen] = useState(false);
   const [endorseForm, setEndorseForm] = useState({ fullName: '', phone: '', email: '', effectiveDate: today(), note: '' });
+  const [coverageOpen, setCoverageOpen] = useState(false);
+  const [coverageForm, setCoverageForm] = useState<{
+    coverageType: CoverageType;
+    sumInsured: string;
+    riderIds: number[];
+    effectiveDate: string;
+    note: string;
+  }>({ coverageType: 'Type1', sumInsured: '', riderIds: [], effectiveDate: today(), note: '' });
 
   const run = async (fn: () => Promise<unknown>, ok: string) => {
     try {
@@ -338,19 +361,38 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
       {/* Endorsements (สลักหลัง) */}
       <Card>
         <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-base">การสลักหลัง (แก้ไขข้อมูลลูกค้า)</CardTitle>
+          <CardTitle className="text-base">การสลักหลัง</CardTitle>
           <Can permission={P.PolicyEndorse}>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!['Issued', 'Active'].includes(policy.status)}
-              onClick={() => {
-                setEndorseForm({ fullName: policy.customerName, phone: '', email: '', effectiveDate: today(), note: '' });
-                setEndorseOpen(true);
-              }}
-            >
-              <FileSignature /> ทำสลักหลัง
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!['Issued', 'Active'].includes(policy.status)}
+                onClick={() => {
+                  setEndorseForm({ fullName: policy.customerName, phone: '', email: '', effectiveDate: today(), note: '' });
+                  setEndorseOpen(true);
+                }}
+              >
+                <FileSignature /> แก้ข้อมูลลูกค้า
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={policy.status !== 'Active'}
+                onClick={() => {
+                  setCoverageForm({
+                    coverageType: policy.coverageType as CoverageType,
+                    sumInsured: String(policy.sumInsured),
+                    riderIds: [],
+                    effectiveDate: today(),
+                    note: '',
+                  });
+                  setCoverageOpen(true);
+                }}
+              >
+                <SlidersHorizontal /> ปรับความคุ้มครอง
+              </Button>
+            </div>
           </Can>
         </CardHeader>
         <CardContent className="pt-0">
@@ -383,6 +425,45 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
               )}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      {/* Activity timeline (audit) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">ไทม์ไลน์กิจกรรม</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {(activity ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">ยังไม่มีกิจกรรม</p>
+          ) : (
+            <ol className="space-y-3">
+              {(activity ?? []).map((a, i) => (
+                <li key={i} className="flex gap-3 text-sm">
+                  <span
+                    className={cn(
+                      'mt-1.5 h-2 w-2 shrink-0 rounded-full',
+                      a.type === 'status'
+                        ? 'bg-blue-500'
+                        : a.type === 'endorsement'
+                          ? 'bg-purple-500'
+                          : a.type === 'payment'
+                            ? 'bg-emerald-500'
+                            : 'bg-amber-500',
+                    )}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-medium">{a.title}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">{fmtDateTime(a.at)}</span>
+                    </div>
+                    {a.detail && <p className="text-muted-foreground">{a.detail}</p>}
+                    {a.user && <p className="text-xs text-muted-foreground">โดย {a.user}</p>}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
         </CardContent>
       </Card>
 
@@ -625,6 +706,135 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
               }}
             >
               บันทึกสลักหลัง
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Coverage endorsement dialog (ปรับความคุ้มครอง + เบี้ย pro-rata) */}
+      <Dialog open={coverageOpen} onOpenChange={setCoverageOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ปรับความคุ้มครอง</DialogTitle>
+            <DialogDescription>
+              เปลี่ยนชั้น/ทุนประกัน/ความคุ้มครองเสริม ระบบจะคิดเบี้ยเพิ่ม/คืนตามสัดส่วนวันที่เหลือ (pro-rata)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label required>ความคุ้มครอง</Label>
+                <Select
+                  value={coverageForm.coverageType}
+                  onValueChange={(v) => setCoverageForm({ ...coverageForm, coverageType: v as CoverageType })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COVERAGES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label required>ทุนประกัน (บาท)</Label>
+                <Input
+                  type="number"
+                  value={coverageForm.sumInsured}
+                  onChange={(e) => setCoverageForm({ ...coverageForm, sumInsured: e.target.value })}
+                />
+              </div>
+            </div>
+            {!!riders?.length && (
+              <div className="space-y-2">
+                <Label>ความคุ้มครองเสริม (เลือกใหม่ทั้งหมด)</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {riders.map((rd) => {
+                    const on = coverageForm.riderIds.includes(rd.id);
+                    return (
+                      <button
+                        key={rd.id}
+                        type="button"
+                        onClick={() =>
+                          setCoverageForm((f) => ({
+                            ...f,
+                            riderIds: on ? f.riderIds.filter((x) => x !== rd.id) : [...f.riderIds, rd.id],
+                          }))
+                        }
+                        className={cn(
+                          'flex items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors',
+                          on ? 'border-primary bg-primary/5' : 'hover:bg-muted',
+                        )}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              'flex h-4 w-4 items-center justify-center rounded border',
+                              on ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/40',
+                            )}
+                          >
+                            {on && <Check className="h-3 w-3" />}
+                          </span>
+                          {rd.name}
+                        </span>
+                        <span className="tabular-nums text-muted-foreground">+{fmtBaht(rd.premium)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label required>วันที่มีผล</Label>
+              <Input
+                type="date"
+                value={coverageForm.effectiveDate}
+                onChange={(e) => setCoverageForm({ ...coverageForm, effectiveDate: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>หมายเหตุ</Label>
+              <Textarea
+                value={coverageForm.note}
+                onChange={(e) => setCoverageForm({ ...coverageForm, note: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCoverageOpen(false)}>
+              ยกเลิก
+            </Button>
+            <Button
+              disabled={coverageEndorsing || !coverageForm.sumInsured || !coverageForm.effectiveDate}
+              onClick={async () => {
+                try {
+                  const res = await coverageEndorse({
+                    policyId,
+                    newCoverageType: coverageForm.coverageType,
+                    newSumInsured: Number(coverageForm.sumInsured),
+                    newRiderIds: coverageForm.riderIds,
+                    effectiveDate: coverageForm.effectiveDate,
+                    note: coverageForm.note || undefined,
+                  }).unwrap();
+                  toast.success('ปรับความคุ้มครองแล้ว', {
+                    description:
+                      res.premiumDelta === 0
+                        ? `เบี้ยใหม่ ${fmtBaht(res.newPremium)}`
+                        : res.premiumDelta > 0
+                          ? `เบี้ยเพิ่ม (pro-rata) ${fmtBaht(res.premiumDelta)} — ${res.paymentNo}`
+                          : `คืนเบี้ย (pro-rata) ${fmtBaht(Math.abs(res.premiumDelta))} — ${res.paymentNo}`,
+                  });
+                  setCoverageOpen(false);
+                } catch (e) {
+                  toast.error(apiError(e));
+                }
+              }}
+            >
+              {coverageEndorsing ? 'กำลังบันทึก…' : 'บันทึก'}
             </Button>
           </DialogFooter>
         </DialogContent>
