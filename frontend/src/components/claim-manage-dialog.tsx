@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Upload, Wrench } from 'lucide-react';
+import { Upload, Wrench, FileText } from 'lucide-react';
 import {
   useGetClaimQuery,
   useGetGaragesQuery,
   useAssignClaimMutation,
   useUploadClaimPhotoMutation,
+  useGetClaimLetterMutation,
   fileUrl,
 } from '@/lib/api/insuranceApi';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ImageGallery } from '@/components/image-preview';
 import { Can } from '@/components/can';
 import { P } from '@/lib/auth/permissions';
-import { apiError } from '@/lib/utils';
+import { apiError, saveUrl } from '@/lib/utils';
+
+const DECIDED = ['Approved', 'Rejected', 'Paid', 'Closed'];
 
 const NONE = 'none';
 
@@ -30,6 +33,7 @@ export function ClaimManageDialog({ claimId, onClose }: { claimId: number | null
   const { data: garages } = useGetGaragesQuery();
   const [assign, { isLoading: assigning }] = useAssignClaimMutation();
   const [uploadPhoto, { isLoading: uploading }] = useUploadClaimPhotoMutation();
+  const [getLetter, { isLoading: lettering }] = useGetClaimLetterMutation();
 
   const [garageId, setGarageId] = useState(NONE);
   const [surveyor, setSurveyor] = useState('');
@@ -61,6 +65,16 @@ export function ClaimManageDialog({ claimId, onClose }: { claimId: number | null
     try {
       await uploadPhoto({ id: claimId, file }).unwrap();
       toast.success('อัปโหลดรูปแล้ว');
+    } catch (e) {
+      toast.error(apiError(e));
+    }
+  };
+
+  const downloadLetter = async () => {
+    if (claimId === null) return;
+    try {
+      const url = await getLetter(claimId).unwrap();
+      saveUrl(url, `${claim?.claimNo ?? 'claim'}-letter.pdf`);
     } catch (e) {
       toast.error(apiError(e));
     }
@@ -143,6 +157,15 @@ export function ClaimManageDialog({ claimId, onClose }: { claimId: number | null
                 />
               )}
             </div>
+
+            {/* Settlement letter (decided claims only) */}
+            {DECIDED.includes(claim.status) && (
+              <div className="border-t pt-4">
+                <Button variant="outline" size="sm" disabled={lettering} onClick={downloadLetter}>
+                  <FileText /> {lettering ? 'กำลังสร้าง…' : 'จดหมายแจ้งผลสินไหม (PDF)'}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </DialogContent>

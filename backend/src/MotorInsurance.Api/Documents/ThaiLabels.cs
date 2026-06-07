@@ -14,6 +14,18 @@ public static class ThaiLabels
         _ => c.ToString(),
     };
 
+    public static string ClaimStatus(ClaimStatus s) => s switch
+    {
+        Domain.Enums.ClaimStatus.Filed => "แจ้งเคลม",
+        Domain.Enums.ClaimStatus.UnderReview => "กำลังตรวจสอบ",
+        Domain.Enums.ClaimStatus.Assessment => "ประเมินความเสียหาย",
+        Domain.Enums.ClaimStatus.Approved => "อนุมัติ",
+        Domain.Enums.ClaimStatus.Rejected => "ปฏิเสธ",
+        Domain.Enums.ClaimStatus.Paid => "จ่ายสินไหมแล้ว",
+        Domain.Enums.ClaimStatus.Closed => "ปิดเคลม",
+        _ => s.ToString(),
+    };
+
     public static string PolicyStatus(PolicyStatus s) => s switch
     {
         Domain.Enums.PolicyStatus.Draft => "ฉบับร่าง",

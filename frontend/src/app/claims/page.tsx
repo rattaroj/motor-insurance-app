@@ -30,6 +30,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Can } from '@/components/can';
 import { ClaimManageDialog } from '@/components/claim-manage-dialog';
+import { ClaimsAgingPanel } from '@/components/claims-aging-panel';
 import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDate } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
@@ -107,6 +108,8 @@ export default function ClaimsPage() {
           </Button>
         </Can>
       </div>
+
+      <ClaimsAgingPanel />
 
       <DataTable<ClaimDto>
         rows={data?.items}
