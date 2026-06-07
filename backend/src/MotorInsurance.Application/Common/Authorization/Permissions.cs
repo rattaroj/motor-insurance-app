@@ -35,4 +35,12 @@ public static class Permissions
     public const string PaymentSettle = "payment.settle";
 
     public const string DashboardRead = "dashboard.read";
+
+    public const string NotificationRead = "notification.read";
+
+    public const string RatingRead = "rating.read";
+    public const string RatingManage = "rating.manage";
+
+    public const string UserRead = "user.read";
+    public const string UserManage = "user.manage";
 }

@@ -34,6 +34,9 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Quotation> Quotations => Set<Quotation>();
     public DbSet<QuotationDriver> QuotationDrivers => Set<QuotationDriver>();
     public DbSet<Rider> Riders => Set<Rider>();
+    public DbSet<PremiumRate> PremiumRates => Set<PremiumRate>();
+    public DbSet<AgeLoadingBand> AgeLoadingBands => Set<AgeLoadingBand>();
+    public DbSet<RatingSetting> RatingSettings => Set<RatingSetting>();
     public DbSet<QuotationRider> QuotationRiders => Set<QuotationRider>();
     public DbSet<PolicyRider> PolicyRiders => Set<PolicyRider>();
     public DbSet<Policy> Policies => Set<Policy>();

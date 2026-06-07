@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Car, UserSquare2, ShieldPlus, Wrench, ChevronRight, type LucideIcon } from 'lucide-react';
+import { Car, UserSquare2, ShieldPlus, Wrench, SlidersHorizontal, ChevronRight, type LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 type Section = {
@@ -35,6 +35,12 @@ const sections: Section[] = [
     title: 'อู่/ศูนย์ซ่อม',
     description: 'อู่และศูนย์ซ่อมที่อ้างอิงตอนรับเคลม',
     icon: Wrench,
+  },
+  {
+    href: '/master/rates',
+    title: 'พิกัดอัตราเบี้ย',
+    description: 'อัตราเบี้ยฐานต่อชั้นความคุ้มครอง ปรับได้โดยไม่ต้อง deploy',
+    icon: SlidersHorizontal,
   },
 ];
 

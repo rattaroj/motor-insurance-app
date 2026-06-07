@@ -207,6 +207,40 @@ public class Rider
     public decimal Premium { get; set; }
 }
 
+/// <summary>
+/// Configurable base-premium rate per coverage type (พิกัดอัตราเบี้ย). One row per
+/// <see cref="CoverageType"/>; <see cref="Rate"/> multiplies the sum insured to give the base
+/// premium. Lets the rate table be tuned without a redeploy (the README's "actuarial engine" seam).
+/// </summary>
+public class PremiumRate
+{
+    public long Id { get; set; }
+    public CoverageType Coverage { get; set; }
+    public decimal Rate { get; set; }
+    /// <summary>The rate applies from this date; rating picks the latest effective row at or before the as-of date.</summary>
+    public DateOnly EffectiveDate { get; set; }
+}
+
+/// <summary>
+/// Configurable vehicle-age loading band (โหลดตามอายุรถ). <see cref="MaxAge"/> is the inclusive upper
+/// bound of the band (null = the open-ended top band); <see cref="Surcharge"/> is the fraction added to
+/// the base premium. Bands form an effective-dated set (all bands of a version share an EffectiveDate).
+/// </summary>
+public class AgeLoadingBand
+{
+    public long Id { get; set; }
+    public int? MaxAge { get; set; }
+    public decimal Surcharge { get; set; }
+    public DateOnly EffectiveDate { get; set; }
+}
+
+/// <summary>A single tunable rating setting, keyed by code (e.g. deductible relief rate/cap).</summary>
+public class RatingSetting
+{
+    public string Code { get; set; } = default!;
+    public decimal Value { get; set; }
+}
+
 /// <summary>Join: a rider selected on a quotation.</summary>
 public class QuotationRider
 {

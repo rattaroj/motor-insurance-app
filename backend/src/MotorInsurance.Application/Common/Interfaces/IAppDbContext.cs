@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Application.Common.Models;
 using MotorInsurance.Domain.Entities;
+using MotorInsurance.Domain.Enums;
 
 namespace MotorInsurance.Application.Common.Interfaces;
 
@@ -24,6 +25,9 @@ public interface IAppDbContext
     DbSet<Quotation> Quotations { get; }
     DbSet<QuotationDriver> QuotationDrivers { get; }
     DbSet<Rider> Riders { get; }
+    DbSet<PremiumRate> PremiumRates { get; }
+    DbSet<AgeLoadingBand> AgeLoadingBands { get; }
+    DbSet<RatingSetting> RatingSettings { get; }
     DbSet<QuotationRider> QuotationRiders { get; }
     DbSet<PolicyRider> PolicyRiders { get; }
     DbSet<Policy> Policies { get; }
@@ -56,8 +60,13 @@ public interface IDateTimeProvider
     DateTime UtcNow { get; }
 }
 
-/// <summary>A message to deliver through some channel (Email/Sms/Line). Channel is informational.</summary>
-public record NotificationMessage(string Channel, string Recipient, string Subject, string Body);
+/// <summary>
+/// A message to deliver through some channel (Email/Sms/Line). Channel is informational.
+/// An optional PDF attachment is honoured by the SMTP sender (ignored by others).
+/// </summary>
+public record NotificationMessage(
+    string Channel, string Recipient, string Subject, string Body,
+    byte[]? AttachmentBytes = null, string? AttachmentName = null);
 
 /// <summary>
 /// Delivers a notification. The default dev implementation logs it (delivery is recorded in the
@@ -94,4 +103,18 @@ public interface IFileStorage
 public interface IPolicyHistoryReader
 {
     Task<IReadOnlyList<PolicyHistoryDto>> GetHistoryAsync(long policyId, CancellationToken ct = default);
+}
+
+/// <summary>An open claim with the time it entered its current status (from the temporal history).</summary>
+public record ClaimAgingRow(
+    long Id, string ClaimNo, string PolicyNo, ClaimStatus Status, decimal ClaimedAmount, DateTime StatusSince);
+
+/// <summary>
+/// Reads claim aging from the system-versioned (temporal) claim history: for each open claim,
+/// the moment it entered its current status. Behind an interface because TemporalAll() is a
+/// SQL Server provider API that must stay in Infrastructure.
+/// </summary>
+public interface IClaimAgingReader
+{
+    Task<IReadOnlyList<ClaimAgingRow>> GetOpenAsync(CancellationToken ct = default);
 }

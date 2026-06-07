@@ -24,6 +24,11 @@ export const P = {
   PaymentRead: 'payment.read',
   PaymentSettle: 'payment.settle',
   DashboardRead: 'dashboard.read',
+  NotificationRead: 'notification.read',
+  RatingRead: 'rating.read',
+  RatingManage: 'rating.manage',
+  UserRead: 'user.read',
+  UserManage: 'user.manage',
 } as const;
 
 /** Minimum permission required to *view* each page. Mutations are gated server-side. */
@@ -35,6 +40,9 @@ export const ROUTE_PERMISSION: Record<string, string> = {
   '/policies': P.PolicyRead,
   '/claims': P.ClaimRead,
   '/payments': P.PaymentRead,
+  '/notifications': P.NotificationRead,
+  '/admin/users': P.UserRead,
+  '/master/rates': P.RatingManage,
   '/master': P.LookupManage,
 };
 

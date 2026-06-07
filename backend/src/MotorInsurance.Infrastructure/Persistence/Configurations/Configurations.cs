@@ -275,6 +275,47 @@ public class RiderConfiguration : IEntityTypeConfiguration<Rider>
     }
 }
 
+public class PremiumRateConfiguration : IEntityTypeConfiguration<PremiumRate>
+{
+    public void Configure(EntityTypeBuilder<PremiumRate> b)
+    {
+        b.ToTable("premium_rate");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id");
+        b.Property(x => x.Coverage).HasColumnName("coverage_type");
+        CoverageConverter.Apply(b.Property(x => x.Coverage));
+        b.Property(x => x.Rate).HasColumnName("rate").HasColumnType("decimal(6,4)");
+        b.Property(x => x.EffectiveDate).HasColumnName("effective_date");
+        // One rate per coverage type per effective date (effective-dated versioning).
+        b.HasIndex(x => new { x.Coverage, x.EffectiveDate }).IsUnique();
+    }
+}
+
+public class AgeLoadingBandConfiguration : IEntityTypeConfiguration<AgeLoadingBand>
+{
+    public void Configure(EntityTypeBuilder<AgeLoadingBand> b)
+    {
+        b.ToTable("age_loading_band");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id");
+        b.Property(x => x.MaxAge).HasColumnName("max_age");
+        b.Property(x => x.Surcharge).HasColumnName("surcharge").HasColumnType("decimal(6,4)");
+        b.Property(x => x.EffectiveDate).HasColumnName("effective_date");
+        b.HasIndex(x => x.EffectiveDate);
+    }
+}
+
+public class RatingSettingConfiguration : IEntityTypeConfiguration<RatingSetting>
+{
+    public void Configure(EntityTypeBuilder<RatingSetting> b)
+    {
+        b.ToTable("rating_setting");
+        b.HasKey(x => x.Code);
+        b.Property(x => x.Code).HasColumnName("code").HasMaxLength(50);
+        b.Property(x => x.Value).HasColumnName("value").HasColumnType("decimal(9,4)");
+    }
+}
+
 public class QuotationRiderConfiguration : IEntityTypeConfiguration<QuotationRider>
 {
     public void Configure(EntityTypeBuilder<QuotationRider> b)
