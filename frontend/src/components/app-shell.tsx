@@ -63,8 +63,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <span className="hidden font-semibold sm:inline">ระบบประกันรถยนต์</span>
-          <div className="ml-auto flex items-center gap-3">
+          <span className="hidden font-semibold md:inline">ระบบประกันรถยนต์</span>
+          <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
             <GlobalSearch />
             <UserMenu />
           </div>

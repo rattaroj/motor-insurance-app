@@ -47,19 +47,19 @@ export function UserMenu() {
   };
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative shrink-0">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <UserRound className="h-4 w-4" />
         </span>
-        <span className="hidden text-left leading-tight sm:block">
-          <span className="block font-medium">{user.fullName}</span>
-          <span className="block text-xs text-muted-foreground">{roleLabel}</span>
+        <span className="hidden max-w-[12rem] text-left leading-tight sm:block">
+          <span className="block truncate font-medium">{user.fullName}</span>
+          <span className="block truncate text-xs text-muted-foreground">{roleLabel}</span>
         </span>
-        <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </button>
 
       {open && (

@@ -31,7 +31,7 @@ export function GlobalSearch() {
   };
 
   return (
-    <div className="relative w-full max-w-xs">
+    <div className="relative w-40 shrink-0 sm:w-64">
       <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <input
         type="search"
