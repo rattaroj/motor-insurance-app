@@ -2,9 +2,10 @@
 -- Each installment is a row in the existing `payment` table (reusing the SettlePayment hub),
 -- tagged with its plan, sequence and due date.
 
--- New non-terminal policy status for installment dunning (overdue → Suspended → reactivate on pay).
-INSERT INTO policy_status (code, name_th, name_en, is_terminal, sort_order)
-VALUES ('Suspended', N'ระงับชั่วคราว', 'Suspended', 0, 7);
+-- New policy status for installment dunning (overdue → Suspended → reactivate on pay).
+-- Note: is_terminal was dropped in V007; the status lookup is code/name/sort_order only.
+INSERT INTO policy_status (code, name_th, name_en, sort_order)
+VALUES ('Suspended', N'ระงับชั่วคราว', 'Suspended', 7);
 
 -- Plan header. status: Active (paying) / Completed (all paid) / Defaulted (overdue, suspended).
 CREATE TABLE installment_plan (
