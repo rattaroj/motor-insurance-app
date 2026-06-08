@@ -1,6 +1,9 @@
 namespace MotorInsurance.Domain.Enums;
 
-public enum PolicyStatus { Draft, Quoted, Issued, Active, Cancelled, Expired }
+public enum PolicyStatus { Draft, Quoted, Issued, Active, Cancelled, Expired, Suspended }
+
+/// <summary>Installment plan lifecycle: paying → all paid, or overdue (policy suspended).</summary>
+public enum InstallmentPlanStatus { Active, Completed, Defaulted }
 
 public enum ClaimStatus { Filed, UnderReview, Assessment, Approved, Rejected, Paid, Closed }
 

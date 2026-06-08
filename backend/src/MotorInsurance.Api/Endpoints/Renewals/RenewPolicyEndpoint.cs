@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Api.Authorization;
 using MotorInsurance.Application.Common.Exceptions;
 using MotorInsurance.Application.Common.Interfaces;
+using MotorInsurance.Application.Policies;
 using MotorInsurance.Application.Quotations;
 using MotorInsurance.Domain.Entities;
 using MotorInsurance.Domain.Enums;
@@ -27,8 +28,6 @@ public class RenewPolicyValidator : Validator<RenewPolicyRequest>
 /// </summary>
 public class RenewPolicyEndpoint : Endpoint<RenewPolicyRequest, RenewPolicyResponse>
 {
-    private const int RenewalWindowDays = 60;
-
     private readonly IAppDbContext _db;
     private readonly IDocumentNumberGenerator _docNo;
     private readonly IDateTimeProvider _clock;
@@ -63,12 +62,12 @@ public class RenewPolicyEndpoint : Endpoint<RenewPolicyRequest, RenewPolicyRespo
             throw new ConflictException("Policy has no expiry date.");
 
         var today = DateOnly.FromDateTime(_clock.UtcNow.Date);
-        var windowOpens = prev.ExpiryDate.Value.AddDays(-RenewalWindowDays);
+        var windowOpens = prev.ExpiryDate.Value.AddDays(-PolicyQueries.RenewalWindowDays);
         if (today < windowOpens)
             throw new ConflictException(
-                $"Renewal window opens on {windowOpens:yyyy-MM-dd} ({RenewalWindowDays} days before expiry).");
+                $"Renewal window opens on {windowOpens:yyyy-MM-dd} ({PolicyQueries.RenewalWindowDays} days before expiry).");
 
-        if (await _db.Policies.AnyAsync(p => p.PreviousPolicyId == prev.Id, ct))
+        if (await _db.HasBeenRenewedAsync(prev.Id, ct))
             throw new ConflictException("This policy has already been renewed.");
 
         var sumInsured = r.AdjustedSumInsured ?? prev.SumInsured;

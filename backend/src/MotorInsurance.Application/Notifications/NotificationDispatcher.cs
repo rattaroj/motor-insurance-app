@@ -18,11 +18,11 @@ public static class NotificationDispatcher
     {
         var contact = await db.Policies.AsNoTracking()
             .Where(p => p.Id == policyId)
-            .Select(p => new { p.Customer.Email, p.Customer.Phone })
+            .Select(p => new { p.Customer.Email, p.Customer.Phone, p.Customer.LineUserId })
             .FirstOrDefaultAsync(ct);
         if (contact is null) return null;
 
-        var (channel, recipient) = RenewalReminders.PickChannel(contact.Email, contact.Phone);
+        var (channel, recipient) = RenewalReminders.PickChannel(contact.Email, contact.Phone, contact.LineUserId);
         var ok = await sender.SendAsync(new NotificationMessage(channel, recipient, subject, body), ct);
 
         var note = new Notification

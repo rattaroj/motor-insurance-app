@@ -10,7 +10,7 @@ namespace MotorInsurance.Api.Endpoints.Customers;
 public record CustomerDto(
     long Id, string NationalId,
     string? Title, string FirstName, string LastName, string FullName, DateOnly? BirthDate,
-    string? Phone, string? Email,
+    string? Phone, string? Email, string? LineUserId,
     string? AddressLine,
     long? ProvinceId, string? ProvinceName,
     long? DistrictId, string? DistrictName,
@@ -55,7 +55,7 @@ public class ListCustomersEndpoint : Endpoint<ListCustomersRequest, PagedResult<
             .Select(c => new CustomerDto(
                 c.Id, c.NationalId,
                 c.Title, c.FirstName, c.LastName, c.FullName, c.BirthDate,
-                c.Phone, c.Email,
+                c.Phone, c.Email, c.LineUserId,
                 c.AddressLine,
                 c.ProvinceId, c.Province != null ? c.Province.NameTh : null,
                 c.DistrictId, c.District != null ? c.District.NameTh : null,

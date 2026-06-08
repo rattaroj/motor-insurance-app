@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useGetPoliciesQuery } from '@/lib/api/insuranceApi';
+import { useGetPoliciesQuery, useExportPoliciesMutation } from '@/lib/api/insuranceApi';
 import { StatusBadge } from '@/components/StatusBadge';
+import { ExportButton } from '@/components/export-button';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -21,6 +22,7 @@ export default function PoliciesPage() {
     pageSize: 10,
     status: status === 'all' ? undefined : status,
   });
+  const [exportPolicies] = useExportPoliciesMutation();
 
   return (
     <div className="space-y-6">
@@ -29,25 +31,31 @@ export default function PoliciesPage() {
           <h1 className="text-2xl font-semibold tracking-tight">กรมธรรม์</h1>
           <p className="text-sm text-muted-foreground">รายการกรมธรรม์ทั้งหมด</p>
         </div>
-        <Select
-          value={status}
-          onValueChange={(v) => {
-            setStatus(v);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">ทุกสถานะ</SelectItem>
-            {STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select
+            value={status}
+            onValueChange={(v) => {
+              setStatus(v);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">ทุกสถานะ</SelectItem>
+              {STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <ExportButton
+            filename="policies.csv"
+            fetchUrl={() => exportPolicies({ status: status === 'all' ? undefined : status }).unwrap()}
+          />
+        </div>
       </div>
 
       {isError && (

@@ -14,8 +14,9 @@ public static class RenewalReminders
 {
     private static readonly CultureInfo Th = CultureInfo.GetCultureInfo("th-TH");
 
-    public static (string Channel, string Recipient) PickChannel(string? email, string? phone) =>
-        !string.IsNullOrWhiteSpace(email) ? ("Email", email!)
+    public static (string Channel, string Recipient) PickChannel(string? email, string? phone, string? lineUserId = null) =>
+        !string.IsNullOrWhiteSpace(lineUserId) ? ("Line", lineUserId!)
+        : !string.IsNullOrWhiteSpace(email) ? ("Email", email!)
         : !string.IsNullOrWhiteSpace(phone) ? ("Sms", phone!)
         : ("Log", "-");
 
@@ -23,9 +24,9 @@ public static class RenewalReminders
     public static async Task<Notification> SendAsync(
         IAppDbContext db, INotificationSender sender, IDateTimeProvider clock,
         long policyId, string policyNo, string customerName, string? email, string? phone, DateOnly? expiry,
-        CancellationToken ct)
+        CancellationToken ct, string? lineUserId = null)
     {
-        var (channel, recipient) = PickChannel(email, phone);
+        var (channel, recipient) = PickChannel(email, phone, lineUserId);
 
         var expiryText = expiry?.ToString("dd/MM/yyyy", Th) ?? "-";
         var subject = $"แจ้งเตือนต่ออายุกรมธรรม์ {policyNo}";

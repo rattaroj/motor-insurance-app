@@ -1,6 +1,7 @@
 using System.Data;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Net.Mail;
 using System.Security.Claims;
 using System.Text;
@@ -249,7 +250,7 @@ public class SmtpSettings
 
 public class LineSettings
 {
-    /// <summary>LINE Notify bearer token; messages broadcast to that token's target.</summary>
+    /// <summary>Messaging API channel access token. Empty → the LINE sender is a no-op (logs + skips).</summary>
     public string? Token { get; set; }
 }
 
@@ -301,12 +302,14 @@ public class SmtpNotificationSender : INotificationSender
 }
 
 /// <summary>
-/// LINE notification sender (LINE Notify). Broadcasts the message to the configured token's
-/// target; the message Recipient is informational. Logs + returns false on error/missing token.
+/// LINE notification sender (Messaging API push). Pushes the message to the LINE userId carried in
+/// <see cref="NotificationMessage.Recipient"/> (set by PickChannel when the customer has a linked
+/// LINE id). A no-op that logs + returns false when no token is configured or the recipient is not a
+/// LINE userId — so it never fires for real until a channel access token is provisioned.
 /// </summary>
 public class LineNotificationSender : INotificationSender
 {
-    private const string NotifyUrl = "https://notify-api.line.me/api/notify";
+    private const string PushUrl = "https://api.line.me/v2/bot/message/push";
 
     private readonly IHttpClientFactory _http;
     private readonly LineSettings _s;
@@ -323,24 +326,32 @@ public class LineNotificationSender : INotificationSender
             return false;
         }
 
+        // LINE userIds start with 'U'; anything else means the message wasn't routed to LINE.
+        if (string.IsNullOrWhiteSpace(m.Recipient) || !m.Recipient.StartsWith('U'))
+        {
+            _log.LogWarning("LINE sender: recipient '{Recipient}' is not a LINE userId — skipping.", m.Recipient);
+            return false;
+        }
+
         try
         {
             var client = _http.CreateClient();
-            using var req = new HttpRequestMessage(HttpMethod.Post, NotifyUrl);
+            using var req = new HttpRequestMessage(HttpMethod.Post, PushUrl);
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _s.Token);
-            req.Content = new FormUrlEncodedContent(new[]
+            req.Content = JsonContent.Create(new
             {
-                new KeyValuePair<string, string>("message", $"{m.Subject}\n{m.Body}"),
+                to = m.Recipient,
+                messages = new[] { new { type = "text", text = $"{m.Subject}\n{m.Body}" } },
             });
 
             var resp = await client.SendAsync(req, ct);
             if (!resp.IsSuccessStatusCode)
-                _log.LogWarning("LINE send returned {Status}.", (int)resp.StatusCode);
+                _log.LogWarning("LINE push returned {Status}.", (int)resp.StatusCode);
             return resp.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
-            _log.LogError(ex, "LINE send failed.");
+            _log.LogError(ex, "LINE push failed.");
             return false;
         }
     }

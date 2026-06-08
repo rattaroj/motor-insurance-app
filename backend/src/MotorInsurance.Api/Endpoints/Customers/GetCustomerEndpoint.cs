@@ -28,7 +28,7 @@ public class GetCustomerEndpoint : EndpointWithoutRequest<CustomerDto>
             .Select(c => new CustomerDto(
                 c.Id, c.NationalId,
                 c.Title, c.FirstName, c.LastName, c.FullName, c.BirthDate,
-                c.Phone, c.Email,
+                c.Phone, c.Email, c.LineUserId,
                 c.AddressLine,
                 c.ProvinceId, c.Province != null ? c.Province.NameTh : null,
                 c.DistrictId, c.District != null ? c.District.NameTh : null,

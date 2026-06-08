@@ -37,12 +37,24 @@ public class CancelPolicyEndpoint : Endpoint<CancelPolicyRequest, CancelPolicyRe
         var policy = await _db.Policies.FirstOrDefaultAsync(p => p.Id == id, ct)
             ?? throw new NotFoundException(nameof(Policy), id);
 
-        var wasActive = policy.Status == PolicyStatus.Active;
         PolicyStateMachine.EnsureTransition(policy.Status, PolicyStatus.Cancelled);
         policy.Status = PolicyStatus.Cancelled;
 
-        // Pro-rata refund only when the premium was actually paid (policy was Active).
-        var refund = wasActive ? ProRataRefund(policy) : 0m;
+        // Refund the unearned part of what was actually paid (pro-rata by elapsed coverage). For a
+        // full single payment this equals premium × remaining/total; for installments it only refunds
+        // what the customer actually paid in, never the unpaid future installments.
+        var amountPaid = await _db.Payments.AsNoTracking()
+            .Where(p => p.PolicyId == id && p.Direction == PaymentDirection.Inbound && p.Status == PaymentStatus.Paid)
+            .Select(p => (decimal?)p.Amount).SumAsync(ct) ?? 0m;
+
+        // Void any still-pending installments so they're no longer collectible.
+        var pending = await _db.Payments
+            .Where(p => p.PolicyId == id && p.Direction == PaymentDirection.Inbound
+                && p.Status == PaymentStatus.Pending && p.InstallmentPlanId != null)
+            .ToListAsync(ct);
+        foreach (var pmt in pending) pmt.Status = PaymentStatus.Failed;
+
+        var refund = ProRataRefund(policy, amountPaid);
         string? refundNo = null;
         if (refund > 0)
         {
@@ -62,15 +74,19 @@ public class CancelPolicyEndpoint : Endpoint<CancelPolicyRequest, CancelPolicyRe
         await Send.ResponseAsync(new CancelPolicyResponse(refund, refundNo), 200, ct);
     }
 
-    /// <summary>Refund = premium × (remaining days / total days), clamped, rounded to 2dp.</summary>
-    private decimal ProRataRefund(Policy p)
+    /// <summary>
+    /// Refund = amountPaid − earned premium, where earned = premium × (elapsed days / total days),
+    /// clamped at 0 and rounded to 2dp. For a fully-paid policy this equals premium × remaining/total.
+    /// </summary>
+    private decimal ProRataRefund(Policy p, decimal amountPaid)
     {
-        if (p.EffectiveDate is null || p.ExpiryDate is null) return 0m;
+        if (amountPaid <= 0 || p.EffectiveDate is null || p.ExpiryDate is null) return 0m;
         var totalDays = p.ExpiryDate.Value.DayNumber - p.EffectiveDate.Value.DayNumber;
         if (totalDays <= 0) return 0m;
 
         var today = DateOnly.FromDateTime(_clock.UtcNow.Date);
-        var remaining = Math.Clamp(p.ExpiryDate.Value.DayNumber - today.DayNumber, 0, totalDays);
-        return Math.Round(p.Premium * remaining / totalDays, 2);
+        var elapsed = Math.Clamp(today.DayNumber - p.EffectiveDate.Value.DayNumber, 0, totalDays);
+        var earned = p.Premium * elapsed / totalDays;
+        return Math.Max(0m, Math.Round(amountPaid - earned, 2));
     }
 }

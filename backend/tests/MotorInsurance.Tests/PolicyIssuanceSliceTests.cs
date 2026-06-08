@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Api.Endpoints.Policies;
 using MotorInsurance.Api.Endpoints.Renewals;
 using MotorInsurance.Application.Common.Interfaces;
+using MotorInsurance.Application.Policies;
 using MotorInsurance.Application.Quotations;
 using MotorInsurance.Domain.Entities;
 using MotorInsurance.Domain.Enums;
@@ -42,6 +43,7 @@ public class PolicyIssuanceSliceTests
         public DbSet<ClaimPhoto> ClaimPhotos => Set<ClaimPhoto>();
         public DbSet<Garage> Garages => Set<Garage>();
         public DbSet<Payment> Payments => Set<Payment>();
+        public DbSet<InstallmentPlan> InstallmentPlans => Set<InstallmentPlan>();
         public DbSet<Notification> Notifications => Set<Notification>();
         public DbSet<AppUser> Users => Set<AppUser>();
         public DbSet<Role> Roles => Set<Role>();
@@ -119,6 +121,43 @@ public class PolicyIssuanceSliceTests
         Assert.Equal(PaymentDirection.Inbound, premium.Direction);
         Assert.Equal(PaymentStatus.Pending, premium.Status);
         Assert.Equal(policy.Premium, premium.Amount);
+    }
+
+    [Fact]
+    public async Task Issue_with_installments_creates_a_plan_and_scheduled_payments()
+    {
+        await using var db = NewDb();
+        var clock = new FixedClock();
+
+        db.Customers.Add(new Customer { Id = 1, NationalId = "1100000000001", FirstName = "ก", LastName = "ข", FullName = "ก ข" });
+        db.Vehicles.Add(new Vehicle { Id = 1, CustomerId = 1, RegistrationNo = "กก1234", Province = "กทม", ModelYearId = 1 });
+        db.Quotations.Add(new Quotation
+        {
+            Id = 1, QuotationNo = "QUO-TEST-0001", CustomerId = 1, VehicleId = 1,
+            CoverageType = CoverageType.Type1, SumInsured = 500_000m,
+            Premium = PremiumCalculator.Calculate(CoverageType.Type1, 500_000m),
+            ValidUntil = new DateOnly(2026, 6, 27),
+        });
+        await db.SaveChangesAsync();
+
+        var policyId = await new IssuePolicyEndpoint(db, new FakeDocNo(), clock)
+            .IssueAsync(new IssuePolicyRequest(1, new DateOnly(2026, 6, 1), Installments: 3), default);
+
+        var policy = await db.Policies.FindAsync(policyId);
+        var plan = await db.InstallmentPlans.SingleAsync(p => p.PolicyId == policyId);
+        Assert.Equal(3, plan.Installments);
+        Assert.Equal(InstallmentPlanStatus.Active, plan.Status);
+
+        var payments = await db.Payments.Where(p => p.PolicyId == policyId)
+            .OrderBy(p => p.InstallmentSeq).ToListAsync();
+        Assert.Equal(3, payments.Count);
+        Assert.All(payments, p => Assert.Equal(PaymentStatus.Pending, p.Status));
+        // Installments sum to premium + the flat financing fee.
+        Assert.Equal(policy!.Premium + InstallmentPlanning.FlatFee, payments.Sum(p => p.Amount));
+        // First due today (down payment); the next FrequencyDays later.
+        var today = DateOnly.FromDateTime(clock.UtcNow.Date);
+        Assert.Equal(today, payments[0].DueDate);
+        Assert.Equal(today.AddDays(InstallmentPlanning.FrequencyDays), payments[1].DueDate);
     }
 
     // Active policy expiring 2026-06-15 — within the 60-day renewal window for the fixed clock (2026-05-28).

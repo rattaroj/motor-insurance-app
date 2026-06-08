@@ -11,7 +11,8 @@ namespace MotorInsurance.Api.Endpoints.Payments;
 public record PaymentDto(
     long Id, string PaymentNo, string Direction, string Status,
     long? PolicyId, string? PolicyNo, long? ClaimId, string? ClaimNo,
-    decimal Amount, DateTime? PaidAt, string? ReferenceNo);
+    decimal Amount, DateTime? PaidAt, string? ReferenceNo,
+    int? InstallmentSeq, DateOnly? DueDate);
 
 public class ListPaymentsRequest
 {
@@ -66,14 +67,14 @@ public class ListPaymentsEndpoint : Endpoint<ListPaymentsRequest, PagedResult<Pa
                 p.Id, p.PaymentNo, p.Direction, p.Status,
                 p.PolicyId, PolicyNo = p.Policy != null ? p.Policy.PolicyNo : null,
                 p.ClaimId, ClaimNo = p.Claim != null ? p.Claim.ClaimNo : null,
-                p.Amount, p.PaidAt, p.ReferenceNo,
+                p.Amount, p.PaidAt, p.ReferenceNo, p.InstallmentSeq, p.DueDate,
             })
             .ToPagedResultAsync(
                 r.Page, r.PageSize,
                 x => new PaymentDto(
                     x.Id, x.PaymentNo, x.Direction.ToString(), x.Status.ToString(),
                     x.PolicyId, x.PolicyNo, x.ClaimId, x.ClaimNo,
-                    x.Amount, x.PaidAt, x.ReferenceNo),
+                    x.Amount, x.PaidAt, x.ReferenceNo, x.InstallmentSeq, x.DueDate),
                 ct);
     }
 }

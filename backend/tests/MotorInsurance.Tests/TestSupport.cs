@@ -37,6 +37,7 @@ public sealed class InMemoryAppDb : DbContext, IAppDbContext
     public DbSet<ClaimPhoto> ClaimPhotos => Set<ClaimPhoto>();
     public DbSet<Garage> Garages => Set<Garage>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<InstallmentPlan> InstallmentPlans => Set<InstallmentPlan>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<Role> Roles => Set<Role>();

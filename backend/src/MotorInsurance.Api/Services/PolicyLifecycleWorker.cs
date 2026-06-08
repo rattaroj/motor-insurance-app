@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using MotorInsurance.Application.Common.Interfaces;
+using MotorInsurance.Application.Notifications;
+using MotorInsurance.Application.Policies;
 using MotorInsurance.Application.Renewals;
 using MotorInsurance.Domain.Enums;
 using MotorInsurance.Domain.StateMachines;
@@ -13,6 +15,7 @@ public class PolicyLifecycleOptions
     public bool Enabled { get; set; } = true;
     public bool AutoExpire { get; set; } = true;
     public bool AutoRemind { get; set; } = true;
+    public bool AutoSuspendOverdue { get; set; } = true;
     public double RunIntervalHours { get; set; } = 6;
     /// <summary>How far ahead to look for expiring policies when auto-reminding.</summary>
     public int ReminderWindowDays { get; set; } = 60;
@@ -79,7 +82,50 @@ public class PolicyLifecycleWorker : BackgroundService
         var today = DateOnly.FromDateTime(clock.UtcNow.Date);
 
         if (_opt.AutoExpire) await ExpireAsync(db, today, ct);
+        if (_opt.AutoSuspendOverdue) await SuspendOverdueAsync(db, sender, clock, today, ct);
         if (_opt.AutoRemind) await RemindAsync(db, sender, clock, today, ct);
+    }
+
+    /// <summary>
+    /// Suspends Active policies that have a past-due, still-pending installment (and marks the plan
+    /// Defaulted), then notifies the customer. Reversed automatically when the overdue installment is
+    /// settled (see SettlePaymentEndpoint). Idempotent: an already-Suspended policy is not re-picked.
+    /// </summary>
+    private async Task SuspendOverdueAsync(
+        IAppDbContext db, INotificationSender sender, IDateTimeProvider clock, DateOnly today, CancellationToken ct)
+    {
+        var overduePolicyIds = await db.Payments.AsNoTracking()
+            .Where(p => p.InstallmentPlanId != null
+                && p.Status == PaymentStatus.Pending
+                && p.DueDate != null && p.DueDate < today
+                && p.Policy!.Status == PolicyStatus.Active)
+            .Select(p => p.PolicyId!.Value)
+            .Distinct()
+            .ToListAsync(ct);
+
+        if (overduePolicyIds.Count == 0) return;
+
+        var policies = await db.Policies.Where(p => overduePolicyIds.Contains(p.Id)).ToListAsync(ct);
+        foreach (var policy in policies)
+        {
+            PolicyStateMachine.EnsureTransition(policy.Status, PolicyStatus.Suspended);
+            policy.Status = PolicyStatus.Suspended;
+        }
+
+        var plans = await db.InstallmentPlans
+            .Where(ip => overduePolicyIds.Contains(ip.PolicyId) && ip.Status == InstallmentPlanStatus.Active)
+            .ToListAsync(ct);
+        foreach (var plan in plans) plan.Status = InstallmentPlanStatus.Defaulted;
+
+        await db.SaveChangesAsync(ct);
+
+        foreach (var policy in policies)
+            await NotificationDispatcher.SendToPolicyCustomerAsync(
+                db, sender, clock, policy.Id,
+                $"กรมธรรม์ {policy.PolicyNo} ถูกระงับชั่วคราว",
+                "เนื่องจากมีงวดผ่อนเบี้ยเกินกำหนดชำระ กรุณาชำระเพื่อเปิดความคุ้มครองอีกครั้ง", ct);
+
+        _log.LogInformation("Suspended {Count} policy(ies) for overdue installments.", policies.Count);
     }
 
     private async Task ExpireAsync(IAppDbContext db, DateOnly today, CancellationToken ct)
@@ -104,24 +150,22 @@ public class PolicyLifecycleWorker : BackgroundService
     private async Task RemindAsync(
         IAppDbContext db, INotificationSender sender, IDateTimeProvider clock, DateOnly today, CancellationToken ct)
     {
-        var limit = today.AddDays(_opt.ReminderWindowDays);
         var throttleSince = clock.UtcNow.AddDays(-_opt.ReminderThrottleDays);
 
         var due = await db.Policies.AsNoTracking()
-            .Where(p => p.Status == PolicyStatus.Active
-                && p.ExpiryDate != null && p.ExpiryDate >= today && p.ExpiryDate <= limit
-                && !db.Policies.Any(r => r.PreviousPolicyId == p.Id)
-                && !db.Notifications.Any(n => n.PolicyId == p.Id && n.SentAt != null && n.SentAt >= throttleSince))
+            .ExpiringWithin(today, _opt.ReminderWindowDays)
+            .NotYetRenewed(db)
+            .Where(p => !db.Notifications.Any(n => n.PolicyId == p.Id && n.SentAt != null && n.SentAt >= throttleSince))
             .Select(p => new
             {
                 p.Id, p.PolicyNo, p.ExpiryDate,
-                Name = p.Customer.FullName, p.Customer.Email, p.Customer.Phone,
+                Name = p.Customer.FullName, p.Customer.Email, p.Customer.Phone, p.Customer.LineUserId,
             })
             .ToListAsync(ct);
 
         foreach (var p in due)
             await RenewalReminders.SendAsync(
-                db, sender, clock, p.Id, p.PolicyNo, p.Name, p.Email, p.Phone, p.ExpiryDate, ct);
+                db, sender, clock, p.Id, p.PolicyNo, p.Name, p.Email, p.Phone, p.ExpiryDate, ct, p.LineUserId);
 
         if (due.Count > 0)
             _log.LogInformation("Auto-sent {Count} renewal reminder(s).", due.Count);

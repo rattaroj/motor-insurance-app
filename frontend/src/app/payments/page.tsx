@@ -7,9 +7,11 @@ import {
   useGetPaymentsQuery,
   useSettlePaymentMutation,
   useGetPaymentReceiptMutation,
+  useExportPaymentsMutation,
   type PaymentDto,
 } from '@/lib/api/insuranceApi';
 import { StatusBadge } from '@/components/StatusBadge';
+import { ExportButton } from '@/components/export-button';
 import { DataTable } from '@/components/data-table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,7 +28,7 @@ import { Label } from '@/components/ui/label';
 import { Can } from '@/components/can';
 import { PromptPayButton } from '@/components/promptpay-button';
 import { P } from '@/lib/auth/permissions';
-import { apiError, fmtBaht, fmtDateTime, saveUrl } from '@/lib/utils';
+import { apiError, fmtBaht, fmtDate, fmtDateTime, saveUrl } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
 
 const PAGE_SIZE = 10;
@@ -60,6 +62,7 @@ export default function PaymentsPage() {
   });
   const [settle, { isLoading: settling }] = useSettlePaymentMutation();
   const [getReceipt] = useGetPaymentReceiptMutation();
+  const [exportPayments] = useExportPaymentsMutation();
   const [settleFor, setSettleFor] = useState<PaymentDto | null>(null);
   const [referenceNo, setReferenceNo] = useState('');
 
@@ -144,12 +147,35 @@ export default function PaymentsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <ExportButton
+              filename="payments.csv"
+              fetchUrl={() =>
+                exportPayments({
+                  search: search || undefined,
+                  status: statusFilter === 'all' ? undefined : statusFilter,
+                  direction: directionFilter === 'all' ? undefined : directionFilter,
+                }).unwrap()
+              }
+            />
           </>
         }
         columns={[
           { header: 'เลขที่', cell: (p) => <span className="font-medium">{p.paymentNo}</span> },
           { header: 'ทิศทาง', cell: (p) => (p.direction === 'Inbound' ? 'รับเบี้ย' : 'จ่ายสินไหม') },
-          { header: 'อ้างอิง', cell: (p) => p.policyNo ?? p.claimNo ?? '-' },
+          {
+            header: 'อ้างอิง',
+            cell: (p) => (
+              <div>
+                <div>{p.policyNo ?? p.claimNo ?? '-'}</div>
+                {p.installmentSeq != null && (
+                  <div className="text-xs text-muted-foreground">
+                    งวด {p.installmentSeq}
+                    {p.dueDate ? ` · ครบกำหนด ${fmtDate(p.dueDate)}` : ''}
+                  </div>
+                )}
+              </div>
+            ),
+          },
           { header: 'สถานะ', cell: (p) => <StatusBadge status={p.status} /> },
           { header: 'จำนวน', className: 'text-right tabular-nums', cell: (p) => fmtBaht(p.amount) },
           { header: 'ชำระเมื่อ', cell: (p) => (p.paidAt ? fmtDateTime(p.paidAt) : '-') },

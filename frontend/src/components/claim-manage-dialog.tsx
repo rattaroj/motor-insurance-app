@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Upload, Wrench, FileText } from 'lucide-react';
+import { Upload, Wrench, FileText, AlertTriangle, Info } from 'lucide-react';
 import {
   useGetClaimQuery,
   useGetGaragesQuery,
@@ -95,6 +95,28 @@ export function ClaimManageDialog({ claimId, onClose }: { claimId: number | null
           </div>
         ) : (
           <div className="space-y-5">
+            {/* Risk signals — reviewer triage aid, not an automated decision */}
+            {claim.riskFlags.length > 0 && (
+              <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <div className="text-xs font-medium text-amber-800">สัญญาณที่ควรตรวจสอบ</div>
+                {claim.riskFlags.map((f) => (
+                  <div
+                    key={f.code}
+                    className={`flex items-center gap-2 text-sm ${
+                      f.severity === 'warn' ? 'text-amber-700' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {f.severity === 'warn' ? (
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    ) : (
+                      <Info className="h-3.5 w-3.5 shrink-0" />
+                    )}
+                    {f.label}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Assign garage + surveyor */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">

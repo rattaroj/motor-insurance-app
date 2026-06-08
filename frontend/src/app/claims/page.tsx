@@ -10,10 +10,12 @@ import {
   useApproveClaimMutation,
   useRejectClaimMutation,
   useGetPoliciesQuery,
+  useExportClaimsMutation,
   type ClaimStatus,
   type ClaimDto,
 } from '@/lib/api/insuranceApi';
 import { StatusBadge } from '@/components/StatusBadge';
+import { ExportButton } from '@/components/export-button';
 import { DataTable } from '@/components/data-table';
 import { Button } from '@/components/ui/button';
 import {
@@ -73,6 +75,7 @@ export default function ClaimsPage() {
   const [advance] = useAdvanceClaimMutation();
   const [approve, { isLoading: approving }] = useApproveClaimMutation();
   const [reject, { isLoading: rejecting }] = useRejectClaimMutation();
+  const [exportClaims] = useExportClaimsMutation();
 
   const [fileOpen, setFileOpen] = useState(false);
   const [form, setForm] = useState({ policyId: '', incidentDate: today(), description: '', claimedAmount: '' });
@@ -127,24 +130,35 @@ export default function ClaimsPage() {
         searchPlaceholder="ค้นหาเลขเคลม / กรมธรรม์"
         emptyText="ยังไม่มีเคลม"
         toolbar={
-          <Select
-            value={statusFilter}
-            onValueChange={(v) => {
-              setStatusFilter(v);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CLAIM_STATUSES.map((s) => (
-                <SelectItem key={s.value} value={s.value}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => {
+                setStatusFilter(v);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CLAIM_STATUSES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <ExportButton
+              filename="claims.csv"
+              fetchUrl={() =>
+                exportClaims({
+                  search: search || undefined,
+                  status: statusFilter === 'all' ? undefined : statusFilter,
+                }).unwrap()
+              }
+            />
+          </>
         }
         columns={[
           { header: 'เลขที่', cell: (c) => <span className="font-medium">{c.claimNo}</span> },

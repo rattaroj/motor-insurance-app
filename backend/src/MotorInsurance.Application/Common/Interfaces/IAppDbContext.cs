@@ -36,6 +36,7 @@ public interface IAppDbContext
     DbSet<ClaimPhoto> ClaimPhotos { get; }
     DbSet<Garage> Garages { get; }
     DbSet<Payment> Payments { get; }
+    DbSet<InstallmentPlan> InstallmentPlans { get; }
     DbSet<Notification> Notifications { get; }
     DbSet<AppUser> Users { get; }
     DbSet<Role> Roles { get; }

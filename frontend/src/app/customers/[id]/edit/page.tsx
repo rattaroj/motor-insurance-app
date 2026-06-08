@@ -31,6 +31,7 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
         birthDate: customer.birthDate ?? '',
         phone: customer.phone ?? '',
         email: customer.email ?? '',
+        lineUserId: customer.lineUserId ?? '',
         addressLine: customer.addressLine ?? '',
         address: {
           provinceId: customer.provinceId,

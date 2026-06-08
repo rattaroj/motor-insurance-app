@@ -10,7 +10,9 @@ public static class PolicyStateMachine
         [PolicyStatus.Draft]     = new[] { PolicyStatus.Quoted, PolicyStatus.Cancelled },
         [PolicyStatus.Quoted]    = new[] { PolicyStatus.Issued, PolicyStatus.Cancelled, PolicyStatus.Expired },
         [PolicyStatus.Issued]    = new[] { PolicyStatus.Active, PolicyStatus.Cancelled },
-        [PolicyStatus.Active]    = new[] { PolicyStatus.Cancelled, PolicyStatus.Expired },
+        [PolicyStatus.Active]    = new[] { PolicyStatus.Cancelled, PolicyStatus.Expired, PolicyStatus.Suspended },
+        // Suspended = an installment is overdue. Reactivates on payment; can still be cancelled/expired.
+        [PolicyStatus.Suspended] = new[] { PolicyStatus.Active, PolicyStatus.Cancelled, PolicyStatus.Expired },
         [PolicyStatus.Cancelled] = Array.Empty<PolicyStatus>(),
         [PolicyStatus.Expired]   = Array.Empty<PolicyStatus>(),
     };

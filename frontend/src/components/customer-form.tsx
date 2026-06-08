@@ -18,6 +18,7 @@ export interface CustomerFormValues {
   birthDate: string;
   phone: string;
   email: string;
+  lineUserId: string;
   addressLine: string;
   address: AddressValue;
 }
@@ -30,6 +31,7 @@ export const emptyCustomerForm: CustomerFormValues = {
   birthDate: '',
   phone: '',
   email: '',
+  lineUserId: '',
   addressLine: '',
   address: emptyAddress,
 };
@@ -43,6 +45,7 @@ export function customerPayload(v: CustomerFormValues) {
     birthDate: v.birthDate || undefined,
     phone: v.phone || undefined,
     email: v.email || undefined,
+    lineUserId: v.lineUserId || undefined,
     addressLine: v.addressLine || undefined,
     provinceId: v.address.provinceId ?? undefined,
     districtId: v.address.districtId ?? undefined,
@@ -131,6 +134,16 @@ export function CustomerForm({ mode, initial, submitting, onSubmit }: CustomerFo
           <Label htmlFor="email">อีเมล</Label>
           <Input id="email" type="email" value={v.email} onChange={(e) => set({ email: e.target.value })} />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="lineUserId">LINE User ID</Label>
+        <Input
+          id="lineUserId"
+          value={v.lineUserId}
+          onChange={(e) => set({ lineUserId: e.target.value })}
+          placeholder="Uxxxxxxxx… (สำหรับแจ้งเตือนผ่าน LINE)"
+        />
       </div>
 
       <div className="space-y-3 rounded-md border p-3">

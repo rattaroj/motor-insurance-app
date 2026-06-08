@@ -5,13 +5,15 @@ using MotorInsurance.Api.Authorization;
 using MotorInsurance.Application.Common.Exceptions;
 using MotorInsurance.Application.Common.Interfaces;
 using MotorInsurance.Application.Notifications;
+using MotorInsurance.Application.Policies;
 using MotorInsurance.Domain.Entities;
 using MotorInsurance.Domain.Enums;
 using Perms = MotorInsurance.Application.Common.Authorization.Permissions;
 
 namespace MotorInsurance.Api.Endpoints.Policies;
 
-public record IssuePolicyRequest(long QuotationId, DateOnly EffectiveDate);
+/// <summary><see cref="Installments"/> null/1 = pay in full; 2..Max = an installment plan.</summary>
+public record IssuePolicyRequest(long QuotationId, DateOnly EffectiveDate, int? Installments = null);
 public record IssuePolicyResponse(long Id);
 
 public class IssuePolicyValidator : Validator<IssuePolicyRequest>
@@ -22,6 +24,10 @@ public class IssuePolicyValidator : Validator<IssuePolicyRequest>
         RuleFor(x => x.EffectiveDate)
             .GreaterThanOrEqualTo(_ => DateOnly.FromDateTime(clock.UtcNow.Date))
             .WithMessage("Effective date cannot be in the past.");
+        RuleFor(x => x.Installments)
+            .InclusiveBetween(1, InstallmentPlanning.MaxInstallments)
+            .When(x => x.Installments.HasValue)
+            .WithMessage($"Installments must be between 1 and {InstallmentPlanning.MaxInstallments}.");
     }
 }
 
@@ -104,18 +110,49 @@ public class IssuePolicyEndpoint : Endpoint<IssuePolicyRequest, IssuePolicyRespo
         };
         _db.Policies.Add(policy);
 
-        // Premium payment record (inbound, pending until paid).
-        _db.Payments.Add(new Payment
-        {
-            PaymentNo = await _docNo.NextAsync("PAY", ct),
-            Direction = PaymentDirection.Inbound,
-            Status = PaymentStatus.Pending,
-            Policy = policy,
-            Amount = policy.Premium,
-            CreatedAt = _clock.UtcNow,
-        });
+        if (InstallmentPlanning.IsInstallment(r.Installments))
+            await AddInstallmentPaymentsAsync(policy, r.Installments!.Value, ct);
+        else
+            // Single full-premium payment (inbound, pending until paid).
+            _db.Payments.Add(await NewInboundAsync(policy, policy.Premium, ct));
 
         await _db.SaveChangesAsync(ct);
         return policy.Id;
     }
+
+    /// <summary>Creates the plan + one pending inbound payment per scheduled installment.</summary>
+    private async Task AddInstallmentPaymentsAsync(Policy policy, int count, CancellationToken ct)
+    {
+        var plan = new InstallmentPlan
+        {
+            Policy = policy,
+            TotalPremium = policy.Premium,
+            Fee = InstallmentPlanning.FlatFee,
+            Installments = count,
+            FrequencyDays = InstallmentPlanning.FrequencyDays,
+            Status = InstallmentPlanStatus.Active,
+            CreatedAt = _clock.UtcNow,
+        };
+        _db.InstallmentPlans.Add(plan);
+
+        var start = DateOnly.FromDateTime(_clock.UtcNow.Date);
+        foreach (var inst in InstallmentPlanning.BuildSchedule(policy.Premium, count, plan.Fee, start))
+        {
+            var payment = await NewInboundAsync(policy, inst.Amount, ct);
+            payment.InstallmentPlan = plan;
+            payment.InstallmentSeq = inst.Seq;
+            payment.DueDate = inst.DueDate;
+            _db.Payments.Add(payment);
+        }
+    }
+
+    private async Task<Payment> NewInboundAsync(Policy policy, decimal amount, CancellationToken ct) => new()
+    {
+        PaymentNo = await _docNo.NextAsync("PAY", ct),
+        Direction = PaymentDirection.Inbound,
+        Status = PaymentStatus.Pending,
+        Policy = policy,
+        Amount = amount,
+        CreatedAt = _clock.UtcNow,
+    };
 }

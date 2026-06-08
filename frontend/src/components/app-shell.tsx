@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Menu } from 'lucide-react';
 import { SidebarNav } from '@/components/app-sidebar';
 import { UserMenu } from '@/components/user-menu';
+import { GlobalSearch } from '@/components/global-search';
 import { cn } from '@/lib/utils';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -62,8 +63,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <span className="font-semibold">ระบบประกันรถยนต์</span>
-          <div className="ml-auto">
+          <span className="hidden font-semibold sm:inline">ระบบประกันรถยนต์</span>
+          <div className="ml-auto flex items-center gap-3">
+            <GlobalSearch />
             <UserMenu />
           </div>
         </header>

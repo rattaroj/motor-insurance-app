@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Can } from '@/components/can';
 import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDate, saveUrl } from '@/lib/utils';
@@ -39,6 +40,16 @@ const COVERAGES: { value: CoverageType; label: string }[] = [
 const today = () => new Date().toISOString().slice(0, 10);
 const PAGE_SIZE = 10;
 
+const INSTALLMENT_OPTIONS = [
+  { value: '1', label: 'ชำระเต็มจำนวน' },
+  { value: '2', label: 'ผ่อน 2 งวด' },
+  { value: '3', label: 'ผ่อน 3 งวด' },
+  { value: '4', label: 'ผ่อน 4 งวด' },
+  { value: '6', label: 'ผ่อน 6 งวด' },
+];
+/** Flat financing fee per installment plan — mirrors backend InstallmentPlanning.FlatFee. */
+const INSTALLMENT_FEE = 300;
+
 export default function QuotationsPage() {
   const router = useRouter();
   const [page, setPage] = useState(1);
@@ -51,6 +62,7 @@ export default function QuotationsPage() {
 
   const [issueFor, setIssueFor] = useState<QuotationDto | null>(null);
   const [effectiveDate, setEffectiveDate] = useState(today());
+  const [installments, setInstallments] = useState('1');
 
   const downloadPdf = async (q: QuotationDto) => {
     try {
@@ -73,7 +85,12 @@ export default function QuotationsPage() {
   const submitIssue = async () => {
     if (!issueFor) return;
     try {
-      const res = await issuePolicy({ quotationId: issueFor.id, effectiveDate }).unwrap();
+      const count = Number(installments);
+      const res = await issuePolicy({
+        quotationId: issueFor.id,
+        effectiveDate,
+        installments: count > 1 ? count : undefined,
+      }).unwrap();
       toast.success('ออกกรมธรรม์แล้ว', { description: `กรมธรรม์ #${res.id}` });
       setIssueFor(null);
       router.push(`/policies/${res.id}`);
@@ -139,6 +156,7 @@ export default function QuotationsPage() {
                     onClick={() => {
                       setIssueFor(q);
                       setEffectiveDate(today());
+                      setInstallments('1');
                     }}
                   >
                     <FileSignature /> ออกกรมธรรม์
@@ -159,9 +177,33 @@ export default function QuotationsPage() {
               จากใบเสนอราคา {issueFor?.quotationNo} — {issueFor?.customerName}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="eff" required>วันที่เริ่มคุ้มครอง</Label>
-            <Input id="eff" type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="eff" required>วันที่เริ่มคุ้มครอง</Label>
+              <Input id="eff" type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>การชำระเบี้ย</Label>
+              <Select value={installments} onValueChange={setInstallments}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {INSTALLMENT_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {Number(installments) > 1 && issueFor && (
+                <p className="text-xs text-muted-foreground">
+                  เบี้ย {fmtBaht(issueFor.premium)} + ค่าธรรมเนียมผ่อน {fmtBaht(INSTALLMENT_FEE)} ≈{' '}
+                  {fmtBaht((issueFor.premium + INSTALLMENT_FEE) / Number(installments))}/งวด ·
+                  ชำระงวดแรกเพื่อเปิดความคุ้มครอง
+                </p>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIssueFor(null)}>

@@ -8,6 +8,7 @@ const styles: Record<string, string> = {
   Active: 'bg-emerald-100 text-emerald-800',
   Cancelled: 'bg-red-100 text-red-800',
   Expired: 'bg-amber-100 text-amber-800',
+  Suspended: 'bg-orange-100 text-orange-800',
   // claim
   Filed: 'bg-sky-100 text-sky-800',
   UnderReview: 'bg-indigo-100 text-indigo-800',
@@ -29,6 +30,7 @@ const labels: Record<string, string> = {
   Active: 'คุ้มครองอยู่',
   Cancelled: 'ยกเลิก',
   Expired: 'หมดอายุ',
+  Suspended: 'ระงับชั่วคราว',
   Filed: 'แจ้งเคลม',
   UnderReview: 'กำลังตรวจสอบ',
   Assessment: 'ประเมินความเสียหาย',

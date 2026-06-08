@@ -8,7 +8,7 @@ import {
 import { setCredentials, clearCredentials, type AuthResponse, type UserProfile } from '../auth/authSlice';
 import type { RootState } from '../store/store';
 
-export type PolicyStatus = 'Draft' | 'Quoted' | 'Issued' | 'Active' | 'Cancelled' | 'Expired';
+export type PolicyStatus = 'Draft' | 'Quoted' | 'Issued' | 'Active' | 'Cancelled' | 'Expired' | 'Suspended';
 export type ClaimStatus = 'Filed' | 'UnderReview' | 'Assessment' | 'Approved' | 'Rejected' | 'Paid' | 'Closed';
 export type CoverageType = 'Type1' | 'Type2Plus' | 'Type3Plus' | 'Type3';
 
@@ -22,6 +22,7 @@ export interface CustomerDto {
   birthDate: string | null;
   phone: string | null;
   email: string | null;
+  lineUserId: string | null;
   addressLine: string | null;
   provinceId: number | null;
   provinceName: string | null;
@@ -31,6 +32,61 @@ export interface CustomerDto {
   subdistrictName: string | null;
   postalCodeId: number | null;
   postalCode: string | null;
+}
+
+/** Customer 360 — headline counts plus the customer's vehicles, policies, claims and payments. */
+export interface OverviewStats {
+  totalPolicies: number;
+  activePolicies: number;
+  openClaims: number;
+  premiumPaid: number;
+  outstanding: number;
+}
+export interface OverviewVehicle {
+  id: number;
+  registrationNo: string;
+  province: string;
+  brand: string;
+  model: string;
+  year: number;
+}
+export interface OverviewPolicy {
+  id: number;
+  policyNo: string;
+  status: PolicyStatus;
+  coverageType: string;
+  premium: number;
+  effectiveDate: string | null;
+  expiryDate: string | null;
+}
+export interface OverviewClaim {
+  id: number;
+  claimNo: string;
+  policyNo: string;
+  status: ClaimStatus;
+  incidentDate: string;
+  claimedAmount: number;
+  approvedAmount: number | null;
+}
+export interface OverviewPayment {
+  id: number;
+  paymentNo: string;
+  direction: string;
+  status: string;
+  amount: number;
+  paidAt: string | null;
+}
+export interface CustomerOverview {
+  id: number;
+  fullName: string;
+  nationalId: string;
+  phone: string | null;
+  email: string | null;
+  stats: OverviewStats;
+  vehicles: OverviewVehicle[];
+  policies: OverviewPolicy[];
+  claims: OverviewClaim[];
+  payments: OverviewPayment[];
 }
 
 /** Address fields sent on customer create/update — all optional. */
@@ -295,7 +351,14 @@ export interface ClaimPhoto {
   createdAt: string;
 }
 
-/** Claim detail = core claim fields plus garage contact, surveyor and damage photos. */
+/** A heuristic risk signal raised on a claim (severity: 'warn' | 'info'). */
+export interface ClaimRiskFlag {
+  code: string;
+  label: string;
+  severity: 'warn' | 'info';
+}
+
+/** Claim detail = core claim fields plus garage contact, surveyor, damage photos and risk flags. */
 export interface ClaimDetailDto {
   id: number;
   claimNo: string;
@@ -312,6 +375,7 @@ export interface ClaimDetailDto {
   garagePhone: string | null;
   surveyorName: string | null;
   photos: ClaimPhoto[];
+  riskFlags: ClaimRiskFlag[];
 }
 
 export interface PaymentDto {
@@ -326,6 +390,8 @@ export interface PaymentDto {
   amount: number;
   paidAt: string | null;
   referenceNo: string | null;
+  installmentSeq: number | null;
+  dueDate: string | null;
 }
 
 /** A user account with its assigned roles (admin user-management). */
@@ -399,6 +465,19 @@ export interface Analytics {
   policiesByStatus: LabelCount[];
   policiesByCoverage: LabelCount[];
   claimsByStatus: LabelCount[];
+}
+
+/** One global-search result row (type: 'policy' | 'claim' | 'customer'). */
+export interface SearchHit {
+  type: 'policy' | 'claim' | 'customer';
+  id: number;
+  title: string;
+  subtitle: string;
+}
+export interface GlobalSearchResult {
+  policies: SearchHit[];
+  claims: SearchHit[];
+  customers: SearchHit[];
 }
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api';
@@ -516,6 +595,10 @@ export const insuranceApi = createApi({
       query: (id) => `customers/${id}`,
       providesTags: (_r, _e, id) => [{ type: 'Customer', id }],
     }),
+    getCustomerOverview: build.query<CustomerOverview, number>({
+      query: (id) => `customers/${id}/overview`,
+      providesTags: (_r, _e, id) => [{ type: 'Customer', id }, 'Policy', 'Claim', 'Payment'],
+    }),
     createCustomer: build.mutation<
       { id: number },
       {
@@ -526,6 +609,7 @@ export const insuranceApi = createApi({
         birthDate?: string;
         phone?: string;
         email?: string;
+        lineUserId?: string;
       } & CustomerAddressInput
     >({
       query: (body) => ({ url: 'customers', method: 'POST', body }),
@@ -541,6 +625,7 @@ export const insuranceApi = createApi({
         birthDate?: string;
         phone?: string;
         email?: string;
+        lineUserId?: string;
       } & CustomerAddressInput
     >({
       query: ({ id, ...body }) => ({ url: `customers/${id}`, method: 'PUT', body }),
@@ -904,7 +989,10 @@ export const insuranceApi = createApi({
       query: (id) => ({ url: `policies/${id}/document`, responseHandler: (r) => r.blob() }),
       transformResponse: (blob: Blob) => URL.createObjectURL(blob),
     }),
-    issuePolicy: build.mutation<{ id: number }, { quotationId: number; effectiveDate: string }>({
+    issuePolicy: build.mutation<
+      { id: number },
+      { quotationId: number; effectiveDate: string; installments?: number }
+    >({
       query: (body) => ({ url: 'policies/issue', method: 'POST', body }),
       invalidatesTags: ['Policy', 'Quotation', 'Payment'],
     }),
@@ -939,6 +1027,14 @@ export const insuranceApi = createApi({
     >({
       query: (policyId) => ({ url: `renewals/${policyId}/remind`, method: 'POST' }),
       invalidatesTags: ['Renewal'],
+    }),
+    /** Send renewal reminders for several policies at once (worklist "remind selected"). */
+    sendBulkReminders: build.mutation<
+      { requested: number; sent: number; failed: number },
+      { policyIds: number[] }
+    >({
+      query: (body) => ({ url: 'renewals/remind', method: 'POST', body }),
+      invalidatesTags: ['Renewal', 'Notification'],
     }),
     createEndorsement: build.mutation<
       { endorsementNos: string[] },
@@ -1158,6 +1254,48 @@ export const insuranceApi = createApi({
       query: () => 'reports/analytics',
       providesTags: ['Policy', 'Claim', 'Payment'],
     }),
+    globalSearch: build.query<GlobalSearchResult, string>({
+      query: (q) => `search?${qs({ q })}`,
+    }),
+
+    // ---------- CSV exports (→ object URL; pair with downloadObjectUrl) ----------
+    exportPolicies: build.mutation<string, { status?: string; search?: string } | void>({
+      query: (a) => ({
+        url: `policies/export?${qs({ status: a?.status, search: a?.search })}`,
+        responseHandler: (r) => r.blob(),
+      }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
+    }),
+    exportClaims: build.mutation<string, { status?: string; search?: string; policyId?: number } | void>({
+      query: (a) => ({
+        url: `claims/export?${qs({ status: a?.status, search: a?.search, policyId: a?.policyId })}`,
+        responseHandler: (r) => r.blob(),
+      }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
+    }),
+    exportPayments: build.mutation<
+      string,
+      { status?: string; direction?: string; search?: string; policyId?: number; claimId?: number } | void
+    >({
+      query: (a) => ({
+        url: `payments/export?${qs({
+          status: a?.status,
+          direction: a?.direction,
+          search: a?.search,
+          policyId: a?.policyId,
+          claimId: a?.claimId,
+        })}`,
+        responseHandler: (r) => r.blob(),
+      }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
+    }),
+    exportExpiring: build.mutation<string, { days?: number } | void>({
+      query: (a) => ({
+        url: `renewals/expiring/export${a?.days ? `?days=${a.days}` : ''}`,
+        responseHandler: (r) => r.blob(),
+      }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
+    }),
   }),
 });
 
@@ -1168,6 +1306,7 @@ export const {
   useGetMeQuery,
   useGetCustomersQuery,
   useGetCustomerQuery,
+  useGetCustomerOverviewQuery,
   useCreateCustomerMutation,
   useUpdateCustomerMutation,
   useDeleteCustomerMutation,
@@ -1243,6 +1382,7 @@ export const {
   useRenewPolicyMutation,
   useGetExpiringPoliciesQuery,
   useSendRenewalReminderMutation,
+  useSendBulkRemindersMutation,
   useCreateEndorsementMutation,
   useCoverageEndorsementMutation,
   useGetPaymentsQuery,
@@ -1263,6 +1403,11 @@ export const {
   useDeleteGarageMutation,
   useGetDashboardSummaryQuery,
   useGetAnalyticsQuery,
+  useGlobalSearchQuery,
+  useExportPoliciesMutation,
+  useExportClaimsMutation,
+  useExportPaymentsMutation,
+  useExportExpiringMutation,
   useGetNotificationsQuery,
   useResendNotificationMutation,
   useGetUsersQuery,

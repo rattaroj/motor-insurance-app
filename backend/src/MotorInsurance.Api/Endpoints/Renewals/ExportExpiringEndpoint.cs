@@ -1,29 +1,26 @@
 using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Api.Authorization;
+using MotorInsurance.Api.Common;
 using MotorInsurance.Application.Common.Interfaces;
 using MotorInsurance.Application.Policies;
 using Perms = MotorInsurance.Application.Common.Authorization.Permissions;
 
 namespace MotorInsurance.Api.Endpoints.Renewals;
 
-public record ExpiringPolicyDto(
-    long PolicyId, string PolicyNo, string CustomerName, string? CustomerEmail, string? CustomerPhone,
-    DateOnly ExpiryDate, int DaysLeft, DateTime? LastRemindedAt);
-
 /// <summary>
-/// GET /api/renewals/expiring?days=60 — Active policies expiring within N days that have not
-/// yet been renewed (the proactive renewal worklist).
+/// GET /api/renewals/expiring/export?days=60 — the renewal worklist as a CSV download
+/// (same set as <see cref="GetExpiringPoliciesEndpoint"/>).
 /// </summary>
-public class GetExpiringPoliciesEndpoint : EndpointWithoutRequest<IReadOnlyList<ExpiringPolicyDto>>
+public class ExportExpiringEndpoint : EndpointWithoutRequest
 {
     private readonly IAppDbContext _db;
     private readonly IDateTimeProvider _clock;
-    public GetExpiringPoliciesEndpoint(IAppDbContext db, IDateTimeProvider clock) => (_db, _clock) = (db, clock);
+    public ExportExpiringEndpoint(IAppDbContext db, IDateTimeProvider clock) => (_db, _clock) = (db, clock);
 
     public override void Configure()
     {
-        Get("renewals/expiring");
+        Get("renewals/expiring/export");
         Policies(PermissionPolicy.For(Perms.PolicyRead));
     }
 
@@ -38,14 +35,21 @@ public class GetExpiringPoliciesEndpoint : EndpointWithoutRequest<IReadOnlyList<
             .OrderBy(p => p.ExpiryDate)
             .Select(p => new
             {
-                p.Id, p.PolicyNo, CustomerName = p.Customer.FullName,
+                p.PolicyNo, CustomerName = p.Customer.FullName,
                 p.Customer.Email, p.Customer.Phone, p.ExpiryDate,
                 LastRemindedAt = _db.Notifications.Where(n => n.PolicyId == p.Id).Max(n => (DateTime?)n.SentAt),
             })
             .ToListAsync(ct);
 
-        Response = rows.Select(r => new ExpiringPolicyDto(
-            r.Id, r.PolicyNo, r.CustomerName, r.Email, r.Phone, r.ExpiryDate!.Value,
-            r.ExpiryDate!.Value.DayNumber - today.DayNumber, r.LastRemindedAt)).ToList();
+        var csv = Csv.Build(
+            new[] { "PolicyNo", "Customer", "Email", "Phone", "ExpiryDate", "DaysLeft", "LastRemindedAt" },
+            rows.Select(r => new[]
+            {
+                r.PolicyNo, r.CustomerName, r.Email, r.Phone, Csv.Date(r.ExpiryDate),
+                r.ExpiryDate is null ? "" : (r.ExpiryDate.Value.DayNumber - today.DayNumber).ToString(),
+                Csv.Date(r.LastRemindedAt),
+            }));
+
+        await Send.BytesAsync(csv, "renewals-expiring.csv", contentType: "text/csv", cancellation: ct);
     }
 }

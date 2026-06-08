@@ -11,7 +11,7 @@ namespace MotorInsurance.Api.Endpoints.Customers;
 
 public record UpdateCustomerRequest(
     string? Title, string FirstName, string LastName, DateOnly? BirthDate,
-    string? Phone, string? Email,
+    string? Phone, string? Email, string? LineUserId,
     string? AddressLine, long? ProvinceId, long? DistrictId, long? SubdistrictId, long? PostalCodeId);
 
 public class UpdateCustomerValidator : Validator<UpdateCustomerRequest>
@@ -29,6 +29,7 @@ public class UpdateCustomerValidator : Validator<UpdateCustomerRequest>
         RuleFor(x => x.Email)
             .MaximumLength(255).EmailAddress()
             .When(x => !string.IsNullOrWhiteSpace(x.Email));
+        RuleFor(x => x.LineUserId).MaximumLength(64);
         RuleFor(x => x.AddressLine).MaximumLength(255);
     }
 }
@@ -67,6 +68,7 @@ public class UpdateCustomerEndpoint : Endpoint<UpdateCustomerRequest>
         customer.SyncFullName();
         customer.Phone = r.Phone;
         customer.Email = r.Email;
+        customer.LineUserId = r.LineUserId;
         customer.AddressLine = r.AddressLine;
         customer.ProvinceId = r.ProvinceId;
         customer.DistrictId = r.DistrictId;

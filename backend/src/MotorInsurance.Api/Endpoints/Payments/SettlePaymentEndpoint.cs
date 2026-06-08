@@ -40,6 +40,7 @@ public class SettlePaymentEndpoint : Endpoint<SettlePaymentRequest>
         var payment = await _db.Payments
             .Include(p => p.Policy)
             .Include(p => p.Claim)
+            .Include(p => p.InstallmentPlan).ThenInclude(ip => ip!.Payments)
             .FirstOrDefaultAsync(p => p.Id == id, ct)
             ?? throw new NotFoundException(nameof(Payment), id);
 
@@ -56,11 +57,22 @@ public class SettlePaymentEndpoint : Endpoint<SettlePaymentRequest>
             if (payment.Policy.Status is PolicyStatus.Cancelled or PolicyStatus.Expired)
                 throw new ConflictException($"Cannot settle premium for a {payment.Policy.Status} policy.");
 
-            // Premium paid → activate policy if it is Issued.
-            if (payment.Policy.Status == PolicyStatus.Issued)
+            // Premium paid → activate an Issued policy (first / down payment);
+            // a later installment paid on a Suspended policy reactivates it.
+            if (payment.Policy.Status is PolicyStatus.Issued or PolicyStatus.Suspended)
             {
                 PolicyStateMachine.EnsureTransition(payment.Policy.Status, PolicyStatus.Active);
                 payment.Policy.Status = PolicyStatus.Active;
+            }
+
+            // Installment plan: completed when every installment is settled;
+            // resumed (Defaulted → Active) when a caught-up payment isn't the last.
+            if (payment.InstallmentPlan is { } plan)
+            {
+                if (plan.Payments.All(x => x.Status == PaymentStatus.Paid))
+                    plan.Status = InstallmentPlanStatus.Completed;
+                else if (plan.Status == InstallmentPlanStatus.Defaulted)
+                    plan.Status = InstallmentPlanStatus.Active;
             }
         }
         else if (payment is { Direction: PaymentDirection.Outbound, Claim: not null })

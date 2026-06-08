@@ -20,6 +20,7 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         b.Property(x => x.BirthDate).HasColumnName("birth_date");
         b.Property(x => x.Phone).HasColumnName("phone").HasMaxLength(20);
         b.Property(x => x.Email).HasColumnName("email").HasMaxLength(255);
+        b.Property(x => x.LineUserId).HasColumnName("line_user_id").HasMaxLength(64);
         b.Property(x => x.AddressLine).HasColumnName("address_line").HasMaxLength(255);
         b.Property(x => x.ProvinceId).HasColumnName("province_id");
         b.Property(x => x.DistrictId).HasColumnName("district_id");
@@ -504,6 +505,9 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         b.Property(x => x.Amount).HasColumnName("amount").HasColumnType("decimal(18,2)");
         b.Property(x => x.PaidAt).HasColumnName("paid_at");
         b.Property(x => x.ReferenceNo).HasColumnName("reference_no").HasMaxLength(100);
+        b.Property(x => x.InstallmentPlanId).HasColumnName("installment_plan_id");
+        b.Property(x => x.InstallmentSeq).HasColumnName("installment_seq");
+        b.Property(x => x.DueDate).HasColumnName("due_date");
         b.Property(x => x.RowVersion).HasColumnName("row_version").IsRowVersion();
         b.Property(x => x.CreatedAt).HasColumnName("created_at");
         b.HasIndex(x => x.PaymentNo).IsUnique();
@@ -511,6 +515,27 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .HasForeignKey(x => x.PolicyId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.Claim).WithMany(c => c.Payments)
             .HasForeignKey(x => x.ClaimId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.InstallmentPlan).WithMany(ip => ip.Payments)
+            .HasForeignKey(x => x.InstallmentPlanId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class InstallmentPlanConfiguration : IEntityTypeConfiguration<InstallmentPlan>
+{
+    public void Configure(EntityTypeBuilder<InstallmentPlan> b)
+    {
+        b.ToTable("installment_plan");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id");
+        b.Property(x => x.PolicyId).HasColumnName("policy_id");
+        b.Property(x => x.TotalPremium).HasColumnName("total_premium").HasColumnType("decimal(18,2)");
+        b.Property(x => x.Fee).HasColumnName("fee").HasColumnType("decimal(18,2)");
+        b.Property(x => x.Installments).HasColumnName("installments");
+        b.Property(x => x.FrequencyDays).HasColumnName("frequency_days");
+        b.Property(x => x.Status).HasColumnName("status").HasMaxLength(20).HasConversion<string>();
+        b.Property(x => x.CreatedAt).HasColumnName("created_at");
+        b.HasOne(x => x.Policy).WithMany()
+            .HasForeignKey(x => x.PolicyId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

@@ -11,7 +11,7 @@ namespace MotorInsurance.Api.Endpoints.Customers;
 
 public record CreateCustomerRequest(
     string NationalId, string? Title, string FirstName, string LastName, DateOnly? BirthDate,
-    string? Phone, string? Email,
+    string? Phone, string? Email, string? LineUserId,
     string? AddressLine, long? ProvinceId, long? DistrictId, long? SubdistrictId, long? PostalCodeId);
 public record CreateCustomerResponse(long Id);
 
@@ -31,6 +31,7 @@ public class CreateCustomerValidator : Validator<CreateCustomerRequest>
         RuleFor(x => x.Email)
             .MaximumLength(255).EmailAddress()
             .When(x => !string.IsNullOrWhiteSpace(x.Email));
+        RuleFor(x => x.LineUserId).MaximumLength(64);
         RuleFor(x => x.AddressLine).MaximumLength(255);
     }
 }
@@ -62,6 +63,7 @@ public class CreateCustomerEndpoint : Endpoint<CreateCustomerRequest, CreateCust
             BirthDate = r.BirthDate,
             Phone = r.Phone,
             Email = r.Email,
+            LineUserId = r.LineUserId,
             AddressLine = r.AddressLine,
             ProvinceId = r.ProvinceId,
             DistrictId = r.DistrictId,

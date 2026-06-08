@@ -73,7 +73,18 @@ export default function CustomersPage() {
         emptyText="ยังไม่มีลูกค้า"
         columns={[
           { header: 'เลขบัตรประชาชน', cell: (c) => <span className="font-medium tabular-nums">{c.nationalId}</span> },
-          { header: 'ชื่อ-นามสกุล', cell: (c) => c.fullName },
+          {
+            header: 'ชื่อ-นามสกุล',
+            cell: (c) => (
+              <button
+                type="button"
+                className="font-medium text-primary hover:underline"
+                onClick={() => router.push(`/customers/${c.id}`)}
+              >
+                {c.fullName}
+              </button>
+            ),
+          },
           { header: 'โทรศัพท์', cell: (c) => c.phone ?? '-' },
           { header: 'อีเมล', cell: (c) => c.email ?? '-' },
           { header: 'จังหวัด', cell: (c) => c.provinceName ?? '-' },

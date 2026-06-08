@@ -41,7 +41,7 @@ public class ClaimStateMachineTests
 public class SeedConsistencyTests
 {
     // Guards: enum values must match the lookup rows seeded by Liquibase.
-    [Fact] public void Policy_status_count() => Assert.Equal(6, Enum.GetValues<PolicyStatus>().Length);
+    [Fact] public void Policy_status_count() => Assert.Equal(7, Enum.GetValues<PolicyStatus>().Length);
     [Fact] public void Claim_status_count() => Assert.Equal(7, Enum.GetValues<ClaimStatus>().Length);
     [Fact] public void Payment_status_count() => Assert.Equal(4, Enum.GetValues<PaymentStatus>().Length);
 }

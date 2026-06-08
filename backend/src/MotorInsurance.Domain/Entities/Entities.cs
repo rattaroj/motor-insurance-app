@@ -14,6 +14,8 @@ public class Customer : BaseEntity
     public DateOnly? BirthDate { get; set; }
     public string? Phone { get; set; }
     public string? Email { get; set; }
+    /// <summary>LINE userId for push notifications via the Messaging API (null until linked).</summary>
+    public string? LineUserId { get; set; }
 
     // Address: free-text line + optional references to the geography master (all nullable).
     public string? AddressLine { get; set; }
@@ -322,8 +324,33 @@ public class Payment : AuditableEntity
     public decimal Amount { get; set; }
     public DateTime? PaidAt { get; set; }
     public string? ReferenceNo { get; set; }
+
+    // Installment tagging (null for a single full-premium payment).
+    public long? InstallmentPlanId { get; set; }
+    public int? InstallmentSeq { get; set; }       // 1..N within the plan
+    public DateOnly? DueDate { get; set; }
+
     public Policy? Policy { get; set; }
     public Claim? Claim { get; set; }
+    public InstallmentPlan? InstallmentPlan { get; set; }
+}
+
+/// <summary>
+/// A premium installment plan: the annual premium financed over <see cref="Installments"/> scheduled
+/// inbound payments (a flat <see cref="Fee"/> added once). Each installment is a <see cref="Payment"/>
+/// tagged with this plan. The policy activates on the first (down) payment; an overdue installment
+/// suspends it until paid.
+/// </summary>
+public class InstallmentPlan : BaseEntity
+{
+    public long PolicyId { get; set; }
+    public decimal TotalPremium { get; set; }      // annual premium financed (excludes Fee)
+    public decimal Fee { get; set; }               // flat financing fee, added to the first installment
+    public int Installments { get; set; }
+    public int FrequencyDays { get; set; }
+    public InstallmentPlanStatus Status { get; set; }
+    public Policy Policy { get; set; } = default!;
+    public ICollection<Payment> Payments { get; set; } = new List<Payment>();
 }
 
 /// <summary>A persisted, auditable record of a notification sent (e.g. a renewal reminder).</summary>
