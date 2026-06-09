@@ -16,11 +16,15 @@ public class PolicyLifecycleOptions
     public bool AutoExpire { get; set; } = true;
     public bool AutoRemind { get; set; } = true;
     public bool AutoSuspendOverdue { get; set; } = true;
+    /// <summary>Send installment-due reminders ahead of the due date (see <see cref="InstallmentReminderDays"/>).</summary>
+    public bool AutoRemindInstallments { get; set; } = true;
     public double RunIntervalHours { get; set; } = 6;
     /// <summary>How far ahead to look for expiring policies when auto-reminding.</summary>
     public int ReminderWindowDays { get; set; } = 60;
     /// <summary>Don't re-remind a policy that was reminded within this many days.</summary>
     public int ReminderThrottleDays { get; set; } = 7;
+    /// <summary>Days ahead of an installment's due date to send a reminder (e.g. 7/3/1).</summary>
+    public List<int> InstallmentReminderDays { get; set; } = new() { 7, 3, 1 };
 }
 
 /// <summary>
@@ -82,8 +86,22 @@ public class PolicyLifecycleWorker : BackgroundService
         var today = DateOnly.FromDateTime(clock.UtcNow.Date);
 
         if (_opt.AutoExpire) await ExpireAsync(db, today, ct);
+        if (_opt.AutoRemindInstallments) await RemindInstallmentsAsync(db, sender, clock, today, ct);
         if (_opt.AutoSuspendOverdue) await SuspendOverdueAsync(db, sender, clock, today, ct);
         if (_opt.AutoRemind) await RemindAsync(db, sender, clock, today, ct);
+    }
+
+    /// <summary>
+    /// Reminds customers a few days before a pending installment falls due (offsets from
+    /// <see cref="PolicyLifecycleOptions.InstallmentReminderDays"/>), closing the loop that
+    /// <see cref="SuspendOverdueAsync"/> only handles after the fact. Idempotent via the reminder subject.
+    /// </summary>
+    private async Task RemindInstallmentsAsync(
+        IAppDbContext db, INotificationSender sender, IDateTimeProvider clock, DateOnly today, CancellationToken ct)
+    {
+        var n = await InstallmentReminders.SendDueRemindersAsync(
+            db, sender, clock, _opt.InstallmentReminderDays, today, ct);
+        if (n > 0) _log.LogInformation("Auto-sent {Count} installment-due reminder(s).", n);
     }
 
     /// <summary>
@@ -169,8 +187,13 @@ public class PolicyLifecycleWorker : BackgroundService
             .ToListAsync(ct);
 
         foreach (var p in due)
+        {
+            // Quote the renewal so the reminder shows the price (same rating the actual renewal uses).
+            var quote = await RenewalQuote.EstimateAsync(db, p.Id, ct);
             await RenewalReminders.SendAsync(
-                db, sender, clock, p.Id, p.PolicyNo, p.Name, p.Email, p.Phone, p.ExpiryDate, ct, p.LineUserId);
+                db, sender, clock, p.Id, p.PolicyNo, p.Name, p.Email, p.Phone, p.ExpiryDate, ct, p.LineUserId,
+                quote?.Breakdown.NetPremium);
+        }
 
         if (due.Count > 0)
             _log.LogInformation("Auto-sent {Count} renewal reminder(s).", due.Count);

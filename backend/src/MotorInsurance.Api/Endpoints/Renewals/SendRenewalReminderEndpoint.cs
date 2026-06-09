@@ -47,8 +47,10 @@ public class SendRenewalReminderEndpoint : EndpointWithoutRequest<SendReminderRe
             .FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException(nameof(Policy), policyId);
 
+        var quote = await RenewalQuote.EstimateAsync(_db, policyId, ct);
         var note = await RenewalReminders.SendAsync(
-            _db, _sender, _clock, policyId, p.PolicyNo, p.Name, p.Email, p.Phone, p.ExpiryDate, ct, p.LineUserId);
+            _db, _sender, _clock, policyId, p.PolicyNo, p.Name, p.Email, p.Phone, p.ExpiryDate, ct, p.LineUserId,
+            quote?.Breakdown.NetPremium);
 
         Response = new SendReminderResponse(note.Id, note.Channel, note.Recipient, note.Status);
     }

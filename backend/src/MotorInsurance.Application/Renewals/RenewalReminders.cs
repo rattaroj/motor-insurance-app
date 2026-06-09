@@ -20,11 +20,15 @@ public static class RenewalReminders
         : !string.IsNullOrWhiteSpace(phone) ? ("Sms", phone!)
         : ("Log", "-");
 
-    /// <summary>Dispatch + persist a renewal reminder for one policy; returns the saved record.</summary>
+    /// <summary>
+    /// Dispatch + persist a renewal reminder for one policy; returns the saved record.
+    /// When <paramref name="estimatedPremium"/> is supplied, the quoted renewal price is appended
+    /// to the message so the customer sees what renewing will cost.
+    /// </summary>
     public static async Task<Notification> SendAsync(
         IAppDbContext db, INotificationSender sender, IDateTimeProvider clock,
         long policyId, string policyNo, string customerName, string? email, string? phone, DateOnly? expiry,
-        CancellationToken ct, string? lineUserId = null)
+        CancellationToken ct, string? lineUserId = null, decimal? estimatedPremium = null)
     {
         var (channel, recipient) = PickChannel(email, phone, lineUserId);
 
@@ -32,6 +36,8 @@ public static class RenewalReminders
         var subject = $"แจ้งเตือนต่ออายุกรมธรรม์ {policyNo}";
         var body = $"เรียน {customerName}\nกรมธรรม์เลขที่ {policyNo} จะหมดอายุวันที่ {expiryText} " +
                    "กรุณาติดต่อเจ้าหน้าที่เพื่อต่ออายุความคุ้มครอง";
+        if (estimatedPremium is { } premium)
+            body += $"\nเบี้ยต่ออายุโดยประมาณ {premium.ToString("N2", Th)} บาท (ราคาจริงยืนยันเมื่อออกกรมธรรม์)";
 
         var ok = await sender.SendAsync(new NotificationMessage(channel, recipient, subject, body), ct);
 

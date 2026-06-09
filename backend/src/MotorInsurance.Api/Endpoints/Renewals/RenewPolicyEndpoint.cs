@@ -5,7 +5,7 @@ using MotorInsurance.Api.Authorization;
 using MotorInsurance.Application.Common.Exceptions;
 using MotorInsurance.Application.Common.Interfaces;
 using MotorInsurance.Application.Policies;
-using MotorInsurance.Application.Quotations;
+using MotorInsurance.Application.Renewals;
 using MotorInsurance.Domain.Entities;
 using MotorInsurance.Domain.Enums;
 using Perms = MotorInsurance.Application.Common.Authorization.Permissions;
@@ -70,21 +70,9 @@ public class RenewPolicyEndpoint : Endpoint<RenewPolicyRequest, RenewPolicyRespo
         if (await _db.HasBeenRenewedAsync(prev.Id, ct))
             throw new ConflictException("This policy has already been renewed.");
 
-        var sumInsured = r.AdjustedSumInsured ?? prev.SumInsured;
-        var newEffective = prev.ExpiryDate.Value.AddDays(1);
-
-        // No-claim bonus: a claim-free previous year bumps the NCB step up; any (non-rejected)
-        // claim resets it. The deductible and selected riders carry over from the previous policy.
-        var hadClaims = await _db.Claims.AnyAsync(
-            c => c.PolicyId == prev.Id && c.Status != ClaimStatus.Rejected, ct);
-        var newNcb = hadClaims
-            ? PremiumCalculator.StepDownNcb(prev.NcbPercent)
-            : PremiumCalculator.StepUpNcb(prev.NcbPercent);
-        var riderIds = prev.Riders.Select(pr => pr.RiderId).ToList();
-
-        var rating = await PremiumRatingService.RateAsync(
-            _db, newEffective.Year, prev.VehicleId, prev.CoverageType, sumInsured,
-            newNcb, prev.Deductible, riderIds, ct);
+        // Rate the renewal via the shared quote logic (same path the renewal reminder quotes from),
+        // carrying over coverage/deductible/riders and stepping the NCB by the prior year's claims.
+        var terms = await RenewalQuote.ComputeTermsAsync(_db, prev, r.AdjustedSumInsured, ct);
 
         var renewal = new Policy
         {
@@ -94,16 +82,16 @@ public class RenewPolicyEndpoint : Endpoint<RenewPolicyRequest, RenewPolicyRespo
             VehicleId = prev.VehicleId,
             Status = PolicyStatus.Issued,
             CoverageType = prev.CoverageType,
-            SumInsured = sumInsured,
-            BasePremium = rating.Breakdown.BasePremium,
-            Premium = rating.Breakdown.NetPremium,
-            NcbPercent = newNcb,
+            SumInsured = terms.SumInsured,
+            BasePremium = terms.Breakdown.BasePremium,
+            Premium = terms.Breakdown.NetPremium,
+            NcbPercent = terms.NewNcb,
             Deductible = prev.Deductible,
-            EffectiveDate = newEffective,
-            ExpiryDate = newEffective.AddYears(1),
+            EffectiveDate = terms.NewEffective,
+            ExpiryDate = terms.NewEffective.AddYears(1),
             PreviousPolicyId = prev.Id,
             CreatedAt = _clock.UtcNow,
-            Riders = riderIds.Select(id => new PolicyRider { RiderId = id }).ToList(),
+            Riders = terms.RiderIds.Select(id => new PolicyRider { RiderId = id }).ToList(),
         };
         _db.Policies.Add(renewal);
 
