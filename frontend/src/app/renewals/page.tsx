@@ -14,6 +14,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Can } from '@/components/can';
 import { ExportButton } from '@/components/export-button';
@@ -32,6 +40,12 @@ export default function RenewalsPage() {
 
   // Selected policy ids for the bulk-remind action.
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  // Pending send action awaiting confirmation (null = dialog closed).
+  const [confirm, setConfirm] = useState<
+    | { kind: 'single'; policyId: number; policyNo: string; contact: string }
+    | { kind: 'bulk'; count: number }
+    | null
+  >(null);
   const rows = data ?? [];
   const allSelected = rows.length > 0 && selected.size === rows.length;
 
@@ -74,6 +88,14 @@ export default function RenewalsPage() {
     }
   };
 
+  // Run the action the confirm dialog is holding, then close it.
+  const runConfirmed = async () => {
+    if (!confirm) return;
+    if (confirm.kind === 'single') await doRemind(confirm.policyId);
+    else await doBulkRemind();
+    setConfirm(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -95,7 +117,11 @@ export default function RenewalsPage() {
               <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
                 ล้าง
               </Button>
-              <Button size="sm" disabled={bulkReminding} onClick={doBulkRemind}>
+              <Button
+                size="sm"
+                disabled={bulkReminding}
+                onClick={() => setConfirm({ kind: 'bulk', count: selected.size })}
+              >
                 <BellRing /> ส่งเตือนที่เลือก
               </Button>
             </div>
@@ -170,7 +196,19 @@ export default function RenewalsPage() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Can permission={P.PolicyRenew}>
-                          <Button size="sm" variant="ghost" disabled={reminding} onClick={() => doRemind(r.policyId)}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={reminding}
+                            onClick={() =>
+                              setConfirm({
+                                kind: 'single',
+                                policyId: r.policyId,
+                                policyNo: r.policyNo,
+                                contact: r.customerEmail ?? r.customerPhone ?? '-',
+                              })
+                            }
+                          >
                             <BellRing /> แจ้งเตือน
                           </Button>
                         </Can>
@@ -195,6 +233,30 @@ export default function RenewalsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Confirm before sending — reminders go out over email/SMS/LINE. */}
+      <Dialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ยืนยันการส่งแจ้งเตือน</DialogTitle>
+            <DialogDescription>
+              {confirm?.kind === 'single'
+                ? `ส่งแจ้งเตือนต่ออายุกรมธรรม์ ${confirm.policyNo} ไปยัง ${confirm.contact}`
+                : confirm?.kind === 'bulk'
+                  ? `ส่งแจ้งเตือนต่ออายุไปยังลูกค้าที่เลือก ${confirm.count} รายการ`
+                  : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirm(null)}>
+              ยกเลิก
+            </Button>
+            <Button disabled={reminding || bulkReminding} onClick={runConfirmed}>
+              <BellRing /> ยืนยันส่ง
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -7,6 +7,14 @@ import { useGetNotificationsQuery, useResendNotificationMutation } from '@/lib/a
 import { DataTable, type Column } from '@/components/data-table';
 import type { NotificationDto } from '@/lib/api/insuranceApi';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Can } from '@/components/can';
 import { P } from '@/lib/auth/permissions';
 import { useDebouncedValue } from '@/lib/use-debounced';
@@ -56,6 +64,8 @@ export default function NotificationsPage() {
   const search = useDebouncedValue(searchInput, 300);
   const { data, isFetching } = useGetNotificationsQuery({ page, pageSize: PAGE_SIZE, search });
   const [resend, { isLoading: resending }] = useResendNotificationMutation();
+  // Notification awaiting resend confirmation (null = dialog closed).
+  const [resendFor, setResendFor] = useState<NotificationDto | null>(null);
 
   const doResend = async (id: number) => {
     try {
@@ -66,6 +76,12 @@ export default function NotificationsPage() {
     }
   };
 
+  const confirmResend = async () => {
+    if (!resendFor) return;
+    await doResend(resendFor.id);
+    setResendFor(null);
+  };
+
   const columns: Column<NotificationDto>[] = [
     ...baseColumns,
     {
@@ -74,7 +90,7 @@ export default function NotificationsPage() {
       cell: (n) =>
         n.status === 'Failed' ? (
           <Can permission={P.PolicyRenew}>
-            <Button size="sm" variant="ghost" disabled={resending} onClick={() => doResend(n.id)}>
+            <Button size="sm" variant="ghost" disabled={resending} onClick={() => setResendFor(n)}>
               <RotateCw /> ส่งซ้ำ
             </Button>
           </Can>
@@ -111,6 +127,27 @@ export default function NotificationsPage() {
         searchPlaceholder="ค้นหากรมธรรม์ / ผู้รับ / หัวข้อ"
         emptyText="ยังไม่มีประวัติการแจ้งเตือน"
       />
+
+      {/* Confirm before resending a failed notification. */}
+      <Dialog open={!!resendFor} onOpenChange={(o) => !o && setResendFor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ยืนยันการส่งซ้ำ</DialogTitle>
+            <DialogDescription>
+              ส่งการแจ้งเตือน “{resendFor?.subject}” ซ้ำไปยัง {resendFor?.recipient} (
+              {resendFor ? (channelLabel[resendFor.channel] ?? resendFor.channel) : ''})
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResendFor(null)}>
+              ยกเลิก
+            </Button>
+            <Button onClick={confirmResend} disabled={resending}>
+              <RotateCw /> ยืนยันส่งซ้ำ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -63,6 +63,8 @@ export default function QuotationsPage() {
   const [issueFor, setIssueFor] = useState<QuotationDto | null>(null);
   const [effectiveDate, setEffectiveDate] = useState(today());
   const [installments, setInstallments] = useState('1');
+  // Quotation awaiting send-email confirmation (null = dialog closed).
+  const [emailFor, setEmailFor] = useState<QuotationDto | null>(null);
 
   const downloadPdf = async (q: QuotationDto) => {
     try {
@@ -80,6 +82,12 @@ export default function QuotationsPage() {
     } catch (e) {
       toast.error(apiError(e));
     }
+  };
+
+  const confirmEmail = async () => {
+    if (!emailFor) return;
+    await emailQuote(emailFor);
+    setEmailFor(null);
   };
 
   const submitIssue = async () => {
@@ -145,7 +153,7 @@ export default function QuotationsPage() {
                   <FileDown />
                 </Button>
                 <Can permission={P.QuotationWrite}>
-                  <Button size="sm" variant="ghost" aria-label="ส่งอีเมล" disabled={emailing} onClick={() => emailQuote(q)}>
+                  <Button size="sm" variant="ghost" aria-label="ส่งอีเมล" disabled={emailing} onClick={() => setEmailFor(q)}>
                     <Mail />
                   </Button>
                 </Can>
@@ -211,6 +219,26 @@ export default function QuotationsPage() {
             </Button>
             <Button onClick={submitIssue} disabled={issuing || !effectiveDate}>
               {issuing ? 'กำลังออก…' : 'ออกกรมธรรม์'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm before sending the quotation email. */}
+      <Dialog open={!!emailFor} onOpenChange={(o) => !o && setEmailFor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ยืนยันการส่งอีเมล</DialogTitle>
+            <DialogDescription>
+              ส่งอีเมลใบเสนอราคา {emailFor?.quotationNo} ไปยังลูกค้า {emailFor?.customerName}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailFor(null)}>
+              ยกเลิก
+            </Button>
+            <Button onClick={confirmEmail} disabled={emailing}>
+              <Mail /> ยืนยันส่ง
             </Button>
           </DialogFooter>
         </DialogContent>
