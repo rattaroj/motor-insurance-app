@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { toast } from 'sonner';
 import {
   Users,
   Car,
@@ -21,8 +22,45 @@ import {
 } from '@/lib/api/insuranceApi';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { P, usePermissions } from '@/lib/auth/permissions';
+import { P, usePermissions, requiredPermission } from '@/lib/auth/permissions';
 import { cn, fmtBaht } from '@/lib/utils';
+
+/**
+ * A Link that checks the target route's required permission first. When the user lacks it,
+ * navigation is blocked and an alert explains why (instead of the AuthProvider silently
+ * bouncing them back to the dashboard).
+ */
+function GuardedLink({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const permissions = usePermissions();
+  const required = requiredPermission(href);
+  const allowed = !required || permissions.includes(required);
+
+  return (
+    <Link
+      href={href}
+      aria-disabled={!allowed}
+      onClick={(e) => {
+        if (!allowed) {
+          e.preventDefault();
+          toast.error('คุณไม่มีสิทธิ์เข้าถึงหน้านี้', {
+            description: 'กรุณาติดต่อผู้ดูแลระบบหากต้องการสิทธิ์เพิ่มเติม',
+          });
+        }
+      }}
+      className={cn(className, !allowed && 'cursor-not-allowed')}
+    >
+      {children}
+    </Link>
+  );
+}
 
 function StatCard({
   href,
@@ -40,7 +78,7 @@ function StatCard({
   loading?: boolean;
 }) {
   return (
-    <Link href={href}>
+    <GuardedLink href={href}>
       <Card className="transition-shadow hover:shadow-md">
         <CardContent className="flex items-center gap-4 p-5">
           <div className={cn('flex h-12 w-12 items-center justify-center rounded-lg', accent)}>
@@ -56,7 +94,7 @@ function StatCard({
           </div>
         </CardContent>
       </Card>
-    </Link>
+    </GuardedLink>
   );
 }
 
@@ -83,7 +121,7 @@ function AlertCard({
   }[count > 0 ? tone : 'slate'];
 
   return (
-    <Link href={href}>
+    <GuardedLink href={href}>
       <Card className={cn('border transition-shadow hover:shadow-md', toneClass)}>
         <CardContent className="flex items-center gap-3 p-4">
           <Icon className="h-5 w-5 shrink-0" />
@@ -97,7 +135,7 @@ function AlertCard({
           </div>
         </CardContent>
       </Card>
-    </Link>
+    </GuardedLink>
   );
 }
 
@@ -204,9 +242,9 @@ export default function DashboardPage() {
               </p>
             )}
           </div>
-          <Link href="/payments" className="text-sm font-medium text-primary hover:underline">
+          <GuardedLink href="/payments" className="text-sm font-medium text-primary hover:underline">
             ไปที่การชำระเงิน →
-          </Link>
+          </GuardedLink>
         </CardContent>
       </Card>
     </div>
