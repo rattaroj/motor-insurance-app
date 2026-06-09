@@ -20,6 +20,8 @@ import {
   useCoverageEndorsementMutation,
   useGetPolicyDocumentMutation,
   useGetPaymentReceiptMutation,
+  useGetNcbCertificateMutation,
+  useGetInstallmentScheduleMutation,
   fileUrl,
   type CoverageType,
 } from '@/lib/api/insuranceApi';
@@ -75,6 +77,8 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
   const [coverageEndorse, { isLoading: coverageEndorsing }] = useCoverageEndorsementMutation();
   const [getPolicyPdf, { isLoading: pdfLoading }] = useGetPolicyDocumentMutation();
   const [getReceipt] = useGetPaymentReceiptMutation();
+  const [getNcbPdf, { isLoading: ncbLoading }] = useGetNcbCertificateMutation();
+  const [getInstallmentPdf, { isLoading: installmentLoading }] = useGetInstallmentScheduleMutation();
   const { data: riders } = useGetRidersQuery();
 
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -123,6 +127,26 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
     }
   };
 
+  const downloadNcbCertificate = async () => {
+    try {
+      const url = await getNcbPdf(policyId).unwrap();
+      saveUrl(url, `NCB-${policy?.policyNo ?? 'policy'}.pdf`);
+    } catch (e) {
+      toast.error(apiError(e));
+    }
+  };
+
+  const downloadInstallmentSchedule = async () => {
+    try {
+      const url = await getInstallmentPdf(policyId).unwrap();
+      saveUrl(url, `installment-${policy?.policyNo ?? 'policy'}.pdf`);
+    } catch (e) {
+      toast.error(apiError(e));
+    }
+  };
+
+  const hasInstallments = (payments?.items ?? []).some((p) => p.installmentSeq != null);
+
   if (isLoading) return <PolicyDetailSkeleton />;
   if (!policy) return <p className="text-sm text-destructive">ไม่พบกรมธรรม์</p>;
 
@@ -146,6 +170,16 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
           <Button variant="outline" disabled={pdfLoading} onClick={downloadPolicyPdf}>
             <FileDown /> {pdfLoading ? 'กำลังสร้าง…' : 'PDF กรมธรรม์'}
           </Button>
+          {['Issued', 'Active', 'Expired'].includes(policy.status) && (
+            <Button variant="outline" disabled={ncbLoading} onClick={downloadNcbCertificate}>
+              <FileDown /> {ncbLoading ? 'กำลังสร้าง…' : 'หนังสือรับรองประวัติดี'}
+            </Button>
+          )}
+          {hasInstallments && (
+            <Button variant="outline" disabled={installmentLoading} onClick={downloadInstallmentSchedule}>
+              <FileDown /> {installmentLoading ? 'กำลังสร้าง…' : 'ตารางผ่อนชำระ'}
+            </Button>
+          )}
           <Can permission={P.PolicyActivate}>
             <Button
               disabled={activating || policy.status !== 'Issued'}

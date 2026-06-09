@@ -989,6 +989,16 @@ export const insuranceApi = createApi({
       query: (id) => ({ url: `policies/${id}/document`, responseHandler: (r) => r.blob() }),
       transformResponse: (blob: Blob) => URL.createObjectURL(blob),
     }),
+    /** No-Claim-Bonus certificate PDF (หนังสือรับรองประวัติดี) → object URL. */
+    getNcbCertificate: build.mutation<string, number>({
+      query: (id) => ({ url: `policies/${id}/ncb-certificate`, responseHandler: (r) => r.blob() }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
+    }),
+    /** Installment-schedule PDF (ตารางผ่อนชำระ) for a policy → object URL. */
+    getInstallmentSchedule: build.mutation<string, number>({
+      query: (policyId) => ({ url: `policies/${policyId}/installment-schedule`, responseHandler: (r) => r.blob() }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
+    }),
     issuePolicy: build.mutation<
       { id: number },
       { quotationId: number; effectiveDate: string; installments?: number }
@@ -1374,6 +1384,8 @@ export const {
   useGetPolicyHistoryQuery,
   useGetPolicyActivityQuery,
   useGetPolicyDocumentMutation,
+  useGetNcbCertificateMutation,
+  useGetInstallmentScheduleMutation,
   useGetPaymentReceiptMutation,
   useGetPromptPayQrMutation,
   useIssuePolicyMutation,

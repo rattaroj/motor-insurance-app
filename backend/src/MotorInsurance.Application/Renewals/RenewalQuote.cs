@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Application.Common.Interfaces;
+using MotorInsurance.Application.Policies;
 using MotorInsurance.Application.Quotations;
 using MotorInsurance.Domain.Entities;
-using MotorInsurance.Domain.Enums;
 
 namespace MotorInsurance.Application.Renewals;
 
@@ -30,11 +30,10 @@ public static class RenewalQuote
         var sumInsured = adjustedSumInsured ?? prev.SumInsured;
 
         // No-claim bonus: a claim-free previous year bumps the NCB step up; any (non-rejected) claim resets it.
-        var hadClaims = await db.Claims.AnyAsync(
-            c => c.PolicyId == prev.Id && c.Status != ClaimStatus.Rejected, ct);
-        var newNcb = hadClaims
-            ? PremiumCalculator.StepDownNcb(prev.NcbPercent)
-            : PremiumCalculator.StepUpNcb(prev.NcbPercent);
+        var claimFree = await NoClaimBonus.IsClaimFreeAsync(db, prev.Id, ct);
+        var newNcb = claimFree
+            ? PremiumCalculator.StepUpNcb(prev.NcbPercent)
+            : PremiumCalculator.StepDownNcb(prev.NcbPercent);
 
         var riderIds = prev.Riders.Select(pr => pr.RiderId).ToList();
 
