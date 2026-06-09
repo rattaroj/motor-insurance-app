@@ -133,8 +133,12 @@ public class PolicyIssuanceSliceTests
         db.Vehicles.Add(new Vehicle { Id = 1, CustomerId = 1, RegistrationNo = "กก1234", Province = "กทม", ModelYearId = 1 });
         db.Quotations.Add(new Quotation
         {
-            Id = 1, QuotationNo = "QUO-TEST-0001", CustomerId = 1, VehicleId = 1,
-            CoverageType = CoverageType.Type1, SumInsured = 500_000m,
+            Id = 1,
+            QuotationNo = "QUO-TEST-0001",
+            CustomerId = 1,
+            VehicleId = 1,
+            CoverageType = CoverageType.Type1,
+            SumInsured = 500_000m,
             Premium = PremiumCalculator.Calculate(CoverageType.Type1, 500_000m),
             ValidUntil = new DateOnly(2026, 6, 27),
         });
@@ -167,11 +171,19 @@ public class PolicyIssuanceSliceTests
         db.Customers.Add(new Customer { Id = 1, NationalId = "1100000000001", FirstName = "ก", LastName = "ข", FullName = "ก ข" });
         db.Policies.Add(new Policy
         {
-            Id = 1, PolicyNo = "POL-TEST-0001", CustomerId = 1, VehicleId = 1,
-            Status = PolicyStatus.Active, CoverageType = CoverageType.Type1,
-            SumInsured = 500_000m, BasePremium = 22_500m, Premium = 22_500m,
-            NcbPercent = ncbPercent, Deductible = 0,
-            EffectiveDate = new DateOnly(2025, 6, 15), ExpiryDate = new DateOnly(2026, 6, 15),
+            Id = 1,
+            PolicyNo = "POL-TEST-0001",
+            CustomerId = 1,
+            VehicleId = 1,
+            Status = PolicyStatus.Active,
+            CoverageType = CoverageType.Type1,
+            SumInsured = 500_000m,
+            BasePremium = 22_500m,
+            Premium = 22_500m,
+            NcbPercent = ncbPercent,
+            Deductible = 0,
+            EffectiveDate = new DateOnly(2025, 6, 15),
+            ExpiryDate = new DateOnly(2026, 6, 15),
         });
         await db.SaveChangesAsync();
         return db;
@@ -194,8 +206,12 @@ public class PolicyIssuanceSliceTests
         await using var db = await DbWithActivePolicyAsync(ncbPercent: 40);
         db.Claims.Add(new Claim
         {
-            Id = 1, ClaimNo = "CLM-TEST-0001", PolicyId = 1,
-            Status = ClaimStatus.Approved, IncidentDate = new DateOnly(2025, 12, 1), ClaimedAmount = 10_000m,
+            Id = 1,
+            ClaimNo = "CLM-TEST-0001",
+            PolicyId = 1,
+            Status = ClaimStatus.Approved,
+            IncidentDate = new DateOnly(2025, 12, 1),
+            ClaimedAmount = 10_000m,
         });
         await db.SaveChangesAsync();
 

@@ -81,8 +81,13 @@ public class GetCustomerOverviewEndpoint : EndpointWithoutRequest<CustomerOvervi
             .OrderByDescending(c => c.Id)
             .Select(c => new
             {
-                c.Id, c.ClaimNo, PolicyNo = c.Policy.PolicyNo, c.Status,
-                c.IncidentDate, c.ClaimedAmount, c.ApprovedAmount,
+                c.Id,
+                c.ClaimNo,
+                PolicyNo = c.Policy.PolicyNo,
+                c.Status,
+                c.IncidentDate,
+                c.ClaimedAmount,
+                c.ApprovedAmount,
             })
             .ToListAsync(ct))
             .Select(c => new OverviewClaim(

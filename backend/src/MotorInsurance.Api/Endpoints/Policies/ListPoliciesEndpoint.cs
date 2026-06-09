@@ -49,13 +49,22 @@ public class ListPoliciesEndpoint : Endpoint<ListPoliciesRequest, PagedResult<Po
             .OrderByDescending(p => p.CreatedAt)
             .Select(p => new
             {
-                p.Id, p.PolicyNo, p.CustomerId,
+                p.Id,
+                p.PolicyNo,
+                p.CustomerId,
                 CustomerName = p.Customer.FullName,
                 p.VehicleId,
                 VehicleRegistration = p.Vehicle.RegistrationNo,
-                p.Status, p.CoverageType, p.SumInsured, p.Premium,
-                p.BasePremium, p.NcbPercent, p.Deductible,
-                p.EffectiveDate, p.ExpiryDate, p.PreviousPolicyId,
+                p.Status,
+                p.CoverageType,
+                p.SumInsured,
+                p.Premium,
+                p.BasePremium,
+                p.NcbPercent,
+                p.Deductible,
+                p.EffectiveDate,
+                p.ExpiryDate,
+                p.PreviousPolicyId,
             })
             .ToPagedResultAsync(
                 r.Page, r.PageSize,

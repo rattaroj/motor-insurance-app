@@ -197,19 +197,19 @@ internal static class CoverageConverter
 
     private static string ToDb(CoverageType v) => v switch
     {
-        CoverageType.Type1     => "TYPE1",
+        CoverageType.Type1 => "TYPE1",
         CoverageType.Type2Plus => "TYPE2PLUS",
         CoverageType.Type3Plus => "TYPE3PLUS",
-        CoverageType.Type3     => "TYPE3",
+        CoverageType.Type3 => "TYPE3",
         _ => "TYPE1"
     };
 
     private static CoverageType FromDb(string v) => v switch
     {
-        "TYPE1"     => CoverageType.Type1,
+        "TYPE1" => CoverageType.Type1,
         "TYPE2PLUS" => CoverageType.Type2Plus,
         "TYPE3PLUS" => CoverageType.Type3Plus,
-        "TYPE3"     => CoverageType.Type3,
+        "TYPE3" => CoverageType.Type3,
         _ => CoverageType.Type1
     };
 }
@@ -222,18 +222,18 @@ internal static class PowertrainConverter
     private static string ToDb(Powertrain v) => v switch
     {
         Powertrain.Gasoline => "GASOLINE",
-        Powertrain.Diesel   => "DIESEL",
+        Powertrain.Diesel => "DIESEL",
         Powertrain.Electric => "ELECTRIC",
-        Powertrain.Hybrid   => "HYBRID",
+        Powertrain.Hybrid => "HYBRID",
         _ => "GASOLINE"
     };
 
     private static Powertrain FromDb(string v) => v switch
     {
         "GASOLINE" => Powertrain.Gasoline,
-        "DIESEL"   => Powertrain.Diesel,
+        "DIESEL" => Powertrain.Diesel,
         "ELECTRIC" => Powertrain.Electric,
-        "HYBRID"   => Powertrain.Hybrid,
+        "HYBRID" => Powertrain.Hybrid,
         _ => Powertrain.Gasoline
     };
 }

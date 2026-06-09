@@ -37,8 +37,12 @@ public class SendRenewalReminderEndpoint : EndpointWithoutRequest<SendReminderRe
             .Where(x => x.Id == policyId)
             .Select(x => new
             {
-                x.PolicyNo, x.ExpiryDate,
-                Name = x.Customer.FullName, x.Customer.Email, x.Customer.Phone, x.Customer.LineUserId,
+                x.PolicyNo,
+                x.ExpiryDate,
+                Name = x.Customer.FullName,
+                x.Customer.Email,
+                x.Customer.Phone,
+                x.Customer.LineUserId,
             })
             .FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException(nameof(Policy), policyId);

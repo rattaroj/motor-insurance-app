@@ -158,8 +158,13 @@ public class PolicyLifecycleWorker : BackgroundService
             .Where(p => !db.Notifications.Any(n => n.PolicyId == p.Id && n.SentAt != null && n.SentAt >= throttleSince))
             .Select(p => new
             {
-                p.Id, p.PolicyNo, p.ExpiryDate,
-                Name = p.Customer.FullName, p.Customer.Email, p.Customer.Phone, p.Customer.LineUserId,
+                p.Id,
+                p.PolicyNo,
+                p.ExpiryDate,
+                Name = p.Customer.FullName,
+                p.Customer.Email,
+                p.Customer.Phone,
+                p.Customer.LineUserId,
             })
             .ToListAsync(ct);
 

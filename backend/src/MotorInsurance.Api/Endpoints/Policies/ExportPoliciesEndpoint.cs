@@ -45,9 +45,16 @@ public class ExportPoliciesEndpoint : EndpointWithoutRequest
             .OrderByDescending(p => p.CreatedAt)
             .Select(p => new
             {
-                p.PolicyNo, CustomerName = p.Customer.FullName,
-                Registration = p.Vehicle.RegistrationNo, p.Status, p.CoverageType,
-                p.SumInsured, p.Premium, p.NcbPercent, p.EffectiveDate, p.ExpiryDate,
+                p.PolicyNo,
+                CustomerName = p.Customer.FullName,
+                Registration = p.Vehicle.RegistrationNo,
+                p.Status,
+                p.CoverageType,
+                p.SumInsured,
+                p.Premium,
+                p.NcbPercent,
+                p.EffectiveDate,
+                p.ExpiryDate,
             })
             .ToListAsync(ct);
 

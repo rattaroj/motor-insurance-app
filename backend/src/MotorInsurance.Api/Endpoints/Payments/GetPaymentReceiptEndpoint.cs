@@ -32,7 +32,12 @@ public class GetPaymentReceiptEndpoint : EndpointWithoutRequest
             .Where(x => x.Id == id)
             .Select(x => new
             {
-                x.PaymentNo, x.Direction, x.Status, x.Amount, x.PaidAt, x.ReferenceNo,
+                x.PaymentNo,
+                x.Direction,
+                x.Status,
+                x.Amount,
+                x.PaidAt,
+                x.ReferenceNo,
                 PolicyNo = x.Policy != null ? x.Policy.PolicyNo : null,
                 CustomerName = x.Policy != null ? x.Policy.Customer.FullName : null,
             })

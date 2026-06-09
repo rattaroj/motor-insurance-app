@@ -64,10 +64,19 @@ public class ListPaymentsEndpoint : Endpoint<ListPaymentsRequest, PagedResult<Pa
             .OrderByDescending(p => p.Id)
             .Select(p => new
             {
-                p.Id, p.PaymentNo, p.Direction, p.Status,
-                p.PolicyId, PolicyNo = p.Policy != null ? p.Policy.PolicyNo : null,
-                p.ClaimId, ClaimNo = p.Claim != null ? p.Claim.ClaimNo : null,
-                p.Amount, p.PaidAt, p.ReferenceNo, p.InstallmentSeq, p.DueDate,
+                p.Id,
+                p.PaymentNo,
+                p.Direction,
+                p.Status,
+                p.PolicyId,
+                PolicyNo = p.Policy != null ? p.Policy.PolicyNo : null,
+                p.ClaimId,
+                ClaimNo = p.Claim != null ? p.Claim.ClaimNo : null,
+                p.Amount,
+                p.PaidAt,
+                p.ReferenceNo,
+                p.InstallmentSeq,
+                p.DueDate,
             })
             .ToPagedResultAsync(
                 r.Page, r.PageSize,

@@ -35,8 +35,11 @@ public class ExportExpiringEndpoint : EndpointWithoutRequest
             .OrderBy(p => p.ExpiryDate)
             .Select(p => new
             {
-                p.PolicyNo, CustomerName = p.Customer.FullName,
-                p.Customer.Email, p.Customer.Phone, p.ExpiryDate,
+                p.PolicyNo,
+                CustomerName = p.Customer.FullName,
+                p.Customer.Email,
+                p.Customer.Phone,
+                p.ExpiryDate,
                 LastRemindedAt = _db.Notifications.Where(n => n.PolicyId == p.Id).Max(n => (DateTime?)n.SentAt),
             })
             .ToListAsync(ct);

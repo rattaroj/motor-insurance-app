@@ -7,14 +7,14 @@ public static class PolicyStateMachine
 {
     private static readonly Dictionary<PolicyStatus, PolicyStatus[]> Allowed = new()
     {
-        [PolicyStatus.Draft]     = new[] { PolicyStatus.Quoted, PolicyStatus.Cancelled },
-        [PolicyStatus.Quoted]    = new[] { PolicyStatus.Issued, PolicyStatus.Cancelled, PolicyStatus.Expired },
-        [PolicyStatus.Issued]    = new[] { PolicyStatus.Active, PolicyStatus.Cancelled },
-        [PolicyStatus.Active]    = new[] { PolicyStatus.Cancelled, PolicyStatus.Expired, PolicyStatus.Suspended },
+        [PolicyStatus.Draft] = new[] { PolicyStatus.Quoted, PolicyStatus.Cancelled },
+        [PolicyStatus.Quoted] = new[] { PolicyStatus.Issued, PolicyStatus.Cancelled, PolicyStatus.Expired },
+        [PolicyStatus.Issued] = new[] { PolicyStatus.Active, PolicyStatus.Cancelled },
+        [PolicyStatus.Active] = new[] { PolicyStatus.Cancelled, PolicyStatus.Expired, PolicyStatus.Suspended },
         // Suspended = an installment is overdue. Reactivates on payment; can still be cancelled/expired.
         [PolicyStatus.Suspended] = new[] { PolicyStatus.Active, PolicyStatus.Cancelled, PolicyStatus.Expired },
         [PolicyStatus.Cancelled] = Array.Empty<PolicyStatus>(),
-        [PolicyStatus.Expired]   = Array.Empty<PolicyStatus>(),
+        [PolicyStatus.Expired] = Array.Empty<PolicyStatus>(),
     };
 
     public static bool CanTransition(PolicyStatus from, PolicyStatus to) =>
@@ -31,13 +31,13 @@ public static class ClaimStateMachine
 {
     private static readonly Dictionary<ClaimStatus, ClaimStatus[]> Allowed = new()
     {
-        [ClaimStatus.Filed]       = new[] { ClaimStatus.UnderReview },
+        [ClaimStatus.Filed] = new[] { ClaimStatus.UnderReview },
         [ClaimStatus.UnderReview] = new[] { ClaimStatus.Assessment },
-        [ClaimStatus.Assessment]  = new[] { ClaimStatus.Approved, ClaimStatus.Rejected },
-        [ClaimStatus.Approved]    = new[] { ClaimStatus.Paid },
-        [ClaimStatus.Paid]        = new[] { ClaimStatus.Closed },
-        [ClaimStatus.Rejected]    = new[] { ClaimStatus.Closed },
-        [ClaimStatus.Closed]      = Array.Empty<ClaimStatus>(),
+        [ClaimStatus.Assessment] = new[] { ClaimStatus.Approved, ClaimStatus.Rejected },
+        [ClaimStatus.Approved] = new[] { ClaimStatus.Paid },
+        [ClaimStatus.Paid] = new[] { ClaimStatus.Closed },
+        [ClaimStatus.Rejected] = new[] { ClaimStatus.Closed },
+        [ClaimStatus.Closed] = Array.Empty<ClaimStatus>(),
     };
 
     public static bool CanTransition(ClaimStatus from, ClaimStatus to) =>

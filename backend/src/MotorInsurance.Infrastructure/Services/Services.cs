@@ -180,7 +180,11 @@ public class ClaimAgingReader : IClaimAgingReader
             .Where(c => c.Status != Domain.Enums.ClaimStatus.Closed)
             .Select(c => new
             {
-                c.Id, c.ClaimNo, PolicyNo = c.Policy.PolicyNo, c.Status, c.ClaimedAmount,
+                c.Id,
+                c.ClaimNo,
+                PolicyNo = c.Policy.PolicyNo,
+                c.Status,
+                c.ClaimedAmount,
             })
             .ToListAsync(ct);
         if (open.Count == 0) return Array.Empty<ClaimAgingRow>();

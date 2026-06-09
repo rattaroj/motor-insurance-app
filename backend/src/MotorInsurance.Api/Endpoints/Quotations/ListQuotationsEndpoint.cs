@@ -50,12 +50,19 @@ public class ListQuotationsEndpoint : Endpoint<ListQuotationsRequest, PagedResul
             .OrderByDescending(q => q.Id)
             .Select(q => new
             {
-                q.Id, q.QuotationNo, q.CustomerId,
+                q.Id,
+                q.QuotationNo,
+                q.CustomerId,
                 CustomerName = q.Customer.FullName,
                 q.VehicleId,
                 VehicleRegistration = q.Vehicle.RegistrationNo,
-                q.CoverageType, q.SumInsured, q.Premium, q.ValidUntil,
-                q.BasePremium, q.NcbPercent, q.Deductible,
+                q.CoverageType,
+                q.SumInsured,
+                q.Premium,
+                q.ValidUntil,
+                q.BasePremium,
+                q.NcbPercent,
+                q.Deductible,
                 Riders = q.Riders.Select(x => x.Rider.Name).ToList(),
             })
             .ToPagedResultAsync(

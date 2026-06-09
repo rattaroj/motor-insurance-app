@@ -53,10 +53,14 @@ public class ExportPaymentsEndpoint : EndpointWithoutRequest
             .OrderByDescending(p => p.Id)
             .Select(p => new
             {
-                p.PaymentNo, p.Direction, p.Status,
+                p.PaymentNo,
+                p.Direction,
+                p.Status,
                 PolicyNo = p.Policy != null ? p.Policy.PolicyNo : null,
                 ClaimNo = p.Claim != null ? p.Claim.ClaimNo : null,
-                p.Amount, p.PaidAt, p.ReferenceNo,
+                p.Amount,
+                p.PaidAt,
+                p.ReferenceNo,
             })
             .ToListAsync(ct);
 

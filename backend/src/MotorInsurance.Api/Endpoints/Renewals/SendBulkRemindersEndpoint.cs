@@ -47,8 +47,13 @@ public class SendBulkRemindersEndpoint : Endpoint<SendBulkRemindersRequest, Send
             .Where(p => ids.Contains(p.Id))
             .Select(p => new
             {
-                p.Id, p.PolicyNo, p.ExpiryDate,
-                Name = p.Customer.FullName, p.Customer.Email, p.Customer.Phone, p.Customer.LineUserId,
+                p.Id,
+                p.PolicyNo,
+                p.ExpiryDate,
+                Name = p.Customer.FullName,
+                p.Customer.Email,
+                p.Customer.Phone,
+                p.Customer.LineUserId,
             })
             .ToListAsync(ct);
 

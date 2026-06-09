@@ -37,11 +37,22 @@ public class GetClaimEndpoint : EndpointWithoutRequest<ClaimDetailDto>
             .Where(x => x.Id == id)
             .Select(x => new
             {
-                x.Id, x.ClaimNo, x.PolicyId, PolicyNo = x.Policy.PolicyNo, x.Status,
-                x.IncidentDate, x.Description, x.ClaimedAmount, x.ApprovedAmount, x.RejectReason,
-                x.GarageId, GarageName = x.Garage != null ? x.Garage.Name : null,
-                GaragePhone = x.Garage != null ? x.Garage.Phone : null, x.SurveyorName,
-                PolicyEffectiveDate = x.Policy.EffectiveDate, PolicySumInsured = x.Policy.SumInsured,
+                x.Id,
+                x.ClaimNo,
+                x.PolicyId,
+                PolicyNo = x.Policy.PolicyNo,
+                x.Status,
+                x.IncidentDate,
+                x.Description,
+                x.ClaimedAmount,
+                x.ApprovedAmount,
+                x.RejectReason,
+                x.GarageId,
+                GarageName = x.Garage != null ? x.Garage.Name : null,
+                GaragePhone = x.Garage != null ? x.Garage.Phone : null,
+                x.SurveyorName,
+                PolicyEffectiveDate = x.Policy.EffectiveDate,
+                PolicySumInsured = x.Policy.SumInsured,
             })
             .FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException(nameof(Claim), id);

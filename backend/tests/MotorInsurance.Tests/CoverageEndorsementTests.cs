@@ -19,11 +19,19 @@ public class CoverageEndorsementTests
         var db = InMemoryAppDb.New();
         db.Policies.Add(new Policy
         {
-            Id = 1, PolicyNo = "POL-TEST-0001", CustomerId = 1, VehicleId = 1,
-            Status = PolicyStatus.Active, CoverageType = CoverageType.Type1,
-            SumInsured = 500_000m, BasePremium = 22_500m, Premium = 22_500m,
-            NcbPercent = 0, Deductible = 0,
-            EffectiveDate = new DateOnly(2025, 6, 15), ExpiryDate = new DateOnly(2026, 6, 15),
+            Id = 1,
+            PolicyNo = "POL-TEST-0001",
+            CustomerId = 1,
+            VehicleId = 1,
+            Status = PolicyStatus.Active,
+            CoverageType = CoverageType.Type1,
+            SumInsured = 500_000m,
+            BasePremium = 22_500m,
+            Premium = 22_500m,
+            NcbPercent = 0,
+            Deductible = 0,
+            EffectiveDate = new DateOnly(2025, 6, 15),
+            ExpiryDate = new DateOnly(2026, 6, 15),
         });
         await db.SaveChangesAsync();
         return db;

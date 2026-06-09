@@ -40,7 +40,12 @@ public class GetClaimLetterEndpoint : EndpointWithoutRequest
             .Where(x => x.Id == id)
             .Select(x => new
             {
-                x.ClaimNo, x.Status, x.IncidentDate, x.ClaimedAmount, x.ApprovedAmount, x.RejectReason,
+                x.ClaimNo,
+                x.Status,
+                x.IncidentDate,
+                x.ClaimedAmount,
+                x.ApprovedAmount,
+                x.RejectReason,
                 x.SurveyorName,
                 PolicyNo = x.Policy.PolicyNo,
                 CustomerName = x.Policy.Customer.FullName,

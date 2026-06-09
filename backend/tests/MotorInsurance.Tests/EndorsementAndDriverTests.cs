@@ -84,8 +84,14 @@ public class EndorsementAndDriverTests
         db.Customers.Add(new Customer { Id = 1, NationalId = "1100000000001", FirstName = "เดิม", LastName = "ชื่อ", FullName = "เดิม ชื่อ", Phone = "0810000000" });
         db.Policies.Add(new Policy
         {
-            Id = 1, PolicyNo = "POL-TEST-0001", CustomerId = 1, VehicleId = 1,
-            Status = status, CoverageType = CoverageType.Type1, SumInsured = 500_000m, Premium = 10_000m,
+            Id = 1,
+            PolicyNo = "POL-TEST-0001",
+            CustomerId = 1,
+            VehicleId = 1,
+            Status = status,
+            CoverageType = CoverageType.Type1,
+            SumInsured = 500_000m,
+            Premium = 10_000m,
         });
         await db.SaveChangesAsync();
         return db;

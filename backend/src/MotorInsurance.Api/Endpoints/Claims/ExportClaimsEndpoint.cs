@@ -44,9 +44,14 @@ public class ExportClaimsEndpoint : EndpointWithoutRequest
             .OrderByDescending(c => c.Id)
             .Select(c => new
             {
-                c.ClaimNo, PolicyNo = c.Policy.PolicyNo, c.Status, c.IncidentDate,
-                c.ClaimedAmount, c.ApprovedAmount,
-                GarageName = c.Garage != null ? c.Garage.Name : null, c.SurveyorName,
+                c.ClaimNo,
+                PolicyNo = c.Policy.PolicyNo,
+                c.Status,
+                c.IncidentDate,
+                c.ClaimedAmount,
+                c.ApprovedAmount,
+                GarageName = c.Garage != null ? c.Garage.Name : null,
+                c.SurveyorName,
             })
             .ToListAsync(ct);
 

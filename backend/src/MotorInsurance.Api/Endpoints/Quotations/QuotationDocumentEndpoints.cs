@@ -21,8 +21,15 @@ internal static class QuotationPdf
             .Where(x => x.Id == quotationId)
             .Select(x => new
             {
-                x.QuotationNo, x.CoverageType, x.SumInsured, x.NcbPercent, x.Deductible, x.ValidUntil, x.VehicleId,
-                CustomerName = x.Customer.FullName, CustomerEmail = x.Customer.Email,
+                x.QuotationNo,
+                x.CoverageType,
+                x.SumInsured,
+                x.NcbPercent,
+                x.Deductible,
+                x.ValidUntil,
+                x.VehicleId,
+                CustomerName = x.Customer.FullName,
+                CustomerEmail = x.Customer.Email,
                 Registration = x.Vehicle.RegistrationNo,
                 RiderIds = x.Riders.Select(r => r.RiderId).ToList(),
                 Riders = x.Riders.Select(r => r.Rider.Name).ToList(),

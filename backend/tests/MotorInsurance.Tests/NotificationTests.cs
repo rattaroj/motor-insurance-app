@@ -61,7 +61,11 @@ public class NotificationTests
         await using var db = InMemoryAppDb.New();
         db.Customers.Add(new Customer
         {
-            Id = 1, NationalId = "1100000000001", FirstName = "ก", LastName = "ข", FullName = "ก ข",
+            Id = 1,
+            NationalId = "1100000000001",
+            FirstName = "ก",
+            LastName = "ข",
+            FullName = "ก ข",
             Phone = "0899999999",   // no email → SMS channel
         });
         db.Policies.Add(new Policy { Id = 1, PolicyNo = "POL-1", CustomerId = 1, VehicleId = 1 });
