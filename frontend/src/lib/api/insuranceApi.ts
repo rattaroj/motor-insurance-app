@@ -12,6 +12,14 @@ export type PolicyStatus = 'Draft' | 'Quoted' | 'Issued' | 'Active' | 'Cancelled
 export type ClaimStatus = 'Filed' | 'UnderReview' | 'Assessment' | 'Approved' | 'Rejected' | 'Paid' | 'Closed';
 export type CoverageType = 'Type1' | 'Type2Plus' | 'Type3Plus' | 'Type3';
 
+/** Who created / last-updated a record, and when (from the BaseEntity audit columns). */
+export interface AuditInfo {
+  createdUser: string | null;
+  createdAt: string;
+  updatedUser: string | null;
+  updatedAt: string | null;
+}
+
 export interface CustomerDto {
   id: number;
   nationalId: string;
@@ -128,6 +136,26 @@ export interface VehicleDto {
   chassisNo: string | null;
 }
 
+/** One policy written on a vehicle (shown on the vehicle detail page). */
+export interface VehiclePolicyDto {
+  id: number;
+  policyNo: string;
+  status: PolicyStatus;
+  coverageType: string;
+  premium: number;
+  effectiveDate: string | null;
+  expiryDate: string | null;
+}
+
+/** Vehicle detail = list fields + brand/model/submodel ids (for the edit cascade) + its policies. */
+export interface VehicleDetailDto extends VehicleDto {
+  brandId: number;
+  modelId: number;
+  submodelId: number;
+  policies: VehiclePolicyDto[];
+  audit: AuditInfo;
+}
+
 export interface Option {
   id: number;
   name: string;
@@ -191,6 +219,15 @@ export interface AgeLoadingBandDto {
 export interface RatingSettingDto {
   code: string;
   value: number;
+}
+
+/** An editable notification template (subject + body) with its supported {{placeholders}}. */
+export interface NotificationTemplateDto {
+  key: string;
+  label: string;
+  subject: string;
+  body: string;
+  variables: string[];
 }
 
 /** Premium broken down by factor (live preview + create response context). */
@@ -278,6 +315,7 @@ export interface PolicyDetailDto extends PolicyDto {
   riders: string[];
   drivers: PolicyDriverDto[];
   endorsements: EndorsementDto[];
+  audit: AuditInfo;
 }
 
 export interface PolicyHistoryDto {
@@ -305,6 +343,22 @@ export interface ExpiringPolicy {
   customerPhone: string | null;
   expiryDate: string;
   daysLeft: number;
+  lastRemindedAt: string | null;
+}
+
+/** A premium installment still unpaid past its due date (the dunning worklist). */
+export interface OverdueInstallment {
+  paymentId: number;
+  paymentNo: string;
+  policyId: number;
+  policyNo: string;
+  customerName: string;
+  customerEmail: string | null;
+  customerPhone: string | null;
+  installmentSeq: number;
+  amount: number;
+  dueDate: string;
+  daysOverdue: number;
   lastRemindedAt: string | null;
 }
 
@@ -376,6 +430,7 @@ export interface ClaimDetailDto {
   surveyorName: string | null;
   photos: ClaimPhoto[];
   riskFlags: ClaimRiskFlag[];
+  audit: AuditInfo;
 }
 
 /** One temporal-history row of a claim (the interval a status/amount combination was current). */
@@ -456,6 +511,7 @@ export interface DashboardSummary {
   claimsOpen: number;
   paymentsPending: number;
   paymentsPendingAmount: number;
+  installmentsOverdue: number;
 }
 
 export interface MonthPremium {
@@ -563,6 +619,7 @@ export const insuranceApi = createApi({
     'Payment',
     'CustomerTitle',
     'Rider',
+    'NotificationTemplate',
     'Garage',
     'Renewal',
     'Notification',
@@ -692,6 +749,21 @@ export const insuranceApi = createApi({
       }
     >({
       query: (body) => ({ url: 'vehicles', method: 'POST', body }),
+      invalidatesTags: ['Vehicle'],
+    }),
+    getVehicle: build.query<VehicleDetailDto, number>({
+      query: (id) => `vehicles/${id}`,
+      providesTags: (_r, _e, id) => [{ type: 'Vehicle', id }],
+    }),
+    updateVehicle: build.mutation<
+      void,
+      { id: number; registrationNo: string; province: string; modelYearId: number; chassisNo?: string }
+    >({
+      query: ({ id, ...body }) => ({ url: `vehicles/${id}`, method: 'PUT', body }),
+      invalidatesTags: (_r, _e, { id }) => ['Vehicle', { type: 'Vehicle', id }],
+    }),
+    deleteVehicle: build.mutation<void, number>({
+      query: (id) => ({ url: `vehicles/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Vehicle'],
     }),
 
@@ -972,6 +1044,18 @@ export const insuranceApi = createApi({
       query: ({ code, value }) => ({ url: `lookups/rating-settings/${code}`, method: 'PUT', body: { value } }),
       invalidatesTags: ['RatingSetting'],
     }),
+    getNotificationTemplates: build.query<NotificationTemplateDto[], void>({
+      query: () => 'lookups/notification-templates',
+      providesTags: ['NotificationTemplate'],
+    }),
+    updateNotificationTemplate: build.mutation<void, { key: string; subject: string; body: string }>({
+      query: ({ key, subject, body }) => ({
+        url: `lookups/notification-templates/${key}`,
+        method: 'PUT',
+        body: { subject, body },
+      }),
+      invalidatesTags: ['NotificationTemplate'],
+    }),
 
     // ---------- Policies ----------
     getPolicies: build.query<
@@ -1125,6 +1209,18 @@ export const insuranceApi = createApi({
       query: ({ id, referenceNo }) => ({ url: `payments/${id}/settle`, method: 'POST', body: { referenceNo } }),
       invalidatesTags: ['Payment', 'Policy', 'Claim'],
     }),
+    /** Inbound premium installments still unpaid past their due date (the dunning worklist). */
+    getOverdueInstallments: build.query<OverdueInstallment[], void>({
+      query: () => 'payments/overdue',
+      providesTags: ['Payment'],
+    }),
+    sendInstallmentReminder: build.mutation<
+      { notificationId: number; channel: string; recipient: string; status: string },
+      number
+    >({
+      query: (paymentId) => ({ url: `payments/${paymentId}/remind`, method: 'POST' }),
+      invalidatesTags: ['Payment', 'Notification'],
+    }),
     /** Premium receipt PDF (ใบเสร็จรับเงิน) → object URL. */
     getPaymentReceipt: build.mutation<string, number>({
       query: (id) => ({ url: `payments/${id}/receipt`, responseHandler: (r) => r.blob() }),
@@ -1188,6 +1284,18 @@ export const insuranceApi = createApi({
         body: { garageId: garageId ?? null, surveyorName: surveyorName ?? null },
       }),
       invalidatesTags: (_r, _e, { id }) => ['Claim', { type: 'Claim', id }],
+    }),
+    /** Assign the same garage/surveyor to several claims at once (worklist "assign selected"). */
+    bulkAssignClaims: build.mutation<
+      { requested: number; assigned: number },
+      { claimIds: number[]; garageId?: number | null; surveyorName?: string | null }
+    >({
+      query: ({ claimIds, garageId, surveyorName }) => ({
+        url: 'claims/assign-bulk',
+        method: 'POST',
+        body: { claimIds, garageId: garageId ?? null, surveyorName: surveyorName ?? null },
+      }),
+      invalidatesTags: ['Claim'],
     }),
     uploadClaimPhoto: build.mutation<ClaimPhoto, { id: number; file: File }>({
       query: ({ id, file }) => {
@@ -1273,9 +1381,16 @@ export const insuranceApi = createApi({
       query: () => 'dashboard/summary',
       providesTags: ['Customer', 'Vehicle', 'Quotation', 'Policy', 'Claim', 'Payment'],
     }),
-    getAnalytics: build.query<Analytics, void>({
-      query: () => 'reports/analytics',
+    getAnalytics: build.query<Analytics, { from?: string; to?: string } | void>({
+      query: (a) => `reports/analytics?${qs({ from: a?.from, to: a?.to })}`,
       providesTags: ['Policy', 'Claim', 'Payment'],
+    }),
+    exportAnalytics: build.mutation<string, { from?: string; to?: string } | void>({
+      query: (a) => ({
+        url: `reports/analytics/export?${qs({ from: a?.from, to: a?.to })}`,
+        responseHandler: (r) => r.blob(),
+      }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
     }),
     globalSearch: build.query<GlobalSearchResult, string>({
       query: (q) => `search?${qs({ q })}`,
@@ -1340,6 +1455,9 @@ export const {
   useUploadIdCardMutation,
   useGetVehiclesQuery,
   useCreateVehicleMutation,
+  useGetVehicleQuery,
+  useUpdateVehicleMutation,
+  useDeleteVehicleMutation,
   useGetVehicleBrandsQuery,
   useGetVehicleModelsQuery,
   useGetVehicleSubmodelsQuery,
@@ -1391,6 +1509,8 @@ export const {
   useUpdateAgeBandMutation,
   useDeleteAgeBandMutation,
   useGetRatingSettingsQuery,
+  useGetNotificationTemplatesQuery,
+  useUpdateNotificationTemplateMutation,
   useUpdateRatingSettingMutation,
   useGetPoliciesQuery,
   useGetPolicyQuery,
@@ -1401,6 +1521,8 @@ export const {
   useGetInstallmentScheduleMutation,
   useGetPaymentReceiptMutation,
   useGetPromptPayQrMutation,
+  useGetOverdueInstallmentsQuery,
+  useSendInstallmentReminderMutation,
   useIssuePolicyMutation,
   useActivatePolicyMutation,
   useCancelPolicyMutation,
@@ -1422,6 +1544,7 @@ export const {
   useGetClaimsAgingQuery,
   useGetClaimLetterMutation,
   useAssignClaimMutation,
+  useBulkAssignClaimsMutation,
   useUploadClaimPhotoMutation,
   useGetGaragesQuery,
   useCreateGarageMutation,
@@ -1429,6 +1552,7 @@ export const {
   useDeleteGarageMutation,
   useGetDashboardSummaryQuery,
   useGetAnalyticsQuery,
+  useExportAnalyticsMutation,
   useGlobalSearchQuery,
   useExportPoliciesMutation,
   useExportClaimsMutation,

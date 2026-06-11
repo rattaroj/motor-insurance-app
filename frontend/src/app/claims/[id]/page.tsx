@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Can } from '@/components/can';
 import { PageHeader } from '@/components/page-header';
+import { AuditFooter } from '@/components/audit-footer';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ImageGallery } from '@/components/image-preview';
 import { ClaimManageDialog } from '@/components/claim-manage-dialog';
@@ -230,6 +231,8 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ id: stri
           )}
         </CardContent>
       </Card>
+
+      <AuditFooter audit={claim.audit} />
 
       <ClaimManageDialog claimId={manageId} onClose={() => setManageId(null)} />
     </div>

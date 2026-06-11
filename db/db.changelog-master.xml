@@ -246,4 +246,14 @@
       DELETE FROM policy_status WHERE code = 'Suspended';
     </rollback>
   </changeSet>
+
+  <changeSet id="V024-notification-template" author="rattaroj.nit">
+    <!-- splitStatements="true": the CREATE TABLE must run before the INSERTs that reference it. -->
+    <sqlFile path="./scripts/V024__notification_template.sql" relativeToChangelogFile="true" splitStatements="true"/>
+    <rollback>
+      DELETE FROM role_permission WHERE permission_code = 'notification.manage';
+      DELETE FROM permission WHERE code = 'notification.manage';
+      DROP TABLE IF EXISTS notification_template;
+    </rollback>
+  </changeSet>
 </databaseChangeLog>

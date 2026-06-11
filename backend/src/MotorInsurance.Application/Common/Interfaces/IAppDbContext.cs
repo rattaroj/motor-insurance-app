@@ -38,6 +38,7 @@ public interface IAppDbContext
     DbSet<Payment> Payments { get; }
     DbSet<InstallmentPlan> InstallmentPlans { get; }
     DbSet<Notification> Notifications { get; }
+    DbSet<NotificationTemplate> NotificationTemplates { get; }
     DbSet<AppUser> Users { get; }
     DbSet<Role> Roles { get; }
     DbSet<Permission> Permissions { get; }

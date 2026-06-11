@@ -1,0 +1,209 @@
+'use client';
+
+import { use, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { toast } from 'sonner';
+import { ArrowLeft, Car } from 'lucide-react';
+import {
+  useGetVehicleQuery,
+  useUpdateVehicleMutation,
+  useGetVehicleBrandsQuery,
+  useGetVehicleModelsQuery,
+  useGetVehicleSubmodelsQuery,
+  useGetVehicleModelYearsQuery,
+  POWERTRAIN_LABELS,
+} from '@/lib/api/insuranceApi';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ProvinceSelect } from '@/components/address-select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
+import { apiError } from '@/lib/utils';
+
+const empty = { registrationNo: '', province: '', brandId: '', modelId: '', submodelId: '', modelYearId: '', chassisNo: '' };
+
+export default function EditVehiclePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const vehicleId = Number(id);
+  const router = useRouter();
+  const { data: vehicle, isLoading } = useGetVehicleQuery(vehicleId);
+  const [updateVehicle, { isLoading: saving }] = useUpdateVehicleMutation();
+  const [form, setForm] = useState(empty);
+
+  // Prefill the cascade from the loaded vehicle once.
+  useEffect(() => {
+    if (vehicle) {
+      setForm({
+        registrationNo: vehicle.registrationNo,
+        province: vehicle.province,
+        brandId: String(vehicle.brandId),
+        modelId: String(vehicle.modelId),
+        submodelId: String(vehicle.submodelId),
+        modelYearId: String(vehicle.modelYearId),
+        chassisNo: vehicle.chassisNo ?? '',
+      });
+    }
+  }, [vehicle]);
+
+  const { data: brands } = useGetVehicleBrandsQuery();
+  const { data: models } = useGetVehicleModelsQuery(Number(form.brandId), { skip: !form.brandId });
+  const { data: submodels } = useGetVehicleSubmodelsQuery(Number(form.modelId), { skip: !form.modelId });
+  const { data: years } = useGetVehicleModelYearsQuery(Number(form.submodelId), { skip: !form.submodelId });
+
+  const submit = async () => {
+    try {
+      await updateVehicle({
+        id: vehicleId,
+        registrationNo: form.registrationNo,
+        province: form.province,
+        modelYearId: Number(form.modelYearId),
+        chassisNo: form.chassisNo || undefined,
+      }).unwrap();
+      toast.success('บันทึกการแก้ไขแล้ว');
+      router.push(`/vehicles/${vehicleId}`);
+    } catch (e) {
+      toast.error(apiError(e));
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-6">
+      <div>
+        <Button variant="ghost" size="sm" asChild className="mb-2 -ml-2">
+          <Link href={`/vehicles/${vehicleId}`}>
+            <ArrowLeft /> กลับไปหน้ารถยนต์
+          </Link>
+        </Button>
+        <PageHeader
+          icon={Car}
+          title="แก้ไขรถยนต์"
+          description={vehicle ? <>เจ้าของ {vehicle.customerName} — เปลี่ยนเจ้าของไม่ได้</> : undefined}
+        />
+      </div>
+
+      {isLoading || !vehicle ? (
+        <Skeleton className="h-96 w-full" />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">ข้อมูลรถยนต์</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="reg" required>ทะเบียน</Label>
+                <Input id="reg" value={form.registrationNo} onChange={(e) => setForm({ ...form, registrationNo: e.target.value })} placeholder="กก1234" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="province" required>จังหวัด</Label>
+                <ProvinceSelect id="province" value={form.province} onChange={(province) => setForm({ ...form, province })} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label required>ยี่ห้อ</Label>
+                <Select
+                  value={form.brandId}
+                  onValueChange={(v) => setForm({ ...form, brandId: v, modelId: '', submodelId: '', modelYearId: '' })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="เลือกยี่ห้อ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {brands?.map((b) => (
+                      <SelectItem key={b.id} value={String(b.id)}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label required>รุ่น</Label>
+                <Select
+                  value={form.modelId}
+                  onValueChange={(v) => setForm({ ...form, modelId: v, submodelId: '', modelYearId: '' })}
+                  disabled={!form.brandId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={form.brandId ? 'เลือกรุ่น' : 'เลือกยี่ห้อก่อน'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {models?.map((m) => (
+                      <SelectItem key={m.id} value={String(m.id)}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label required>รุ่นย่อย</Label>
+                <Select
+                  value={form.submodelId}
+                  onValueChange={(v) => setForm({ ...form, submodelId: v, modelYearId: '' })}
+                  disabled={!form.modelId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={form.modelId ? 'เลือกรุ่นย่อย' : 'เลือกรุ่นก่อน'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {submodels?.map((s) => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {s.name} · {POWERTRAIN_LABELS[s.powertrain]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label required>ปีรถ</Label>
+                <Select
+                  value={form.modelYearId}
+                  onValueChange={(v) => setForm({ ...form, modelYearId: v })}
+                  disabled={!form.submodelId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={form.submodelId ? 'เลือกปี' : 'เลือกรุ่นย่อยก่อน'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years?.map((y) => (
+                      <SelectItem key={y.id} value={String(y.id)}>
+                        {y.year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="chassis">เลขตัวถัง (ไม่บังคับ)</Label>
+              <Input id="chassis" value={form.chassisNo} onChange={(e) => setForm({ ...form, chassisNo: e.target.value })} />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" asChild>
+                <Link href={`/vehicles/${vehicleId}`}>ยกเลิก</Link>
+              </Button>
+              <Button
+                onClick={submit}
+                disabled={saving || !form.registrationNo || !form.province || !form.modelYearId}
+              >
+                {saving ? 'กำลังบันทึก…' : 'บันทึก'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

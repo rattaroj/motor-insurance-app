@@ -2,7 +2,8 @@
 
 import { Suspense, useState } from 'react';
 import { toast } from 'sonner';
-import { Wallet, Receipt, CreditCard } from 'lucide-react';
+import Link from 'next/link';
+import { Wallet, Receipt, CreditCard, AlarmClock } from 'lucide-react';
 import {
   useGetPaymentsQuery,
   useSettlePaymentMutation,
@@ -28,6 +29,7 @@ import { Label } from '@/components/ui/label';
 import { Can } from '@/components/can';
 import { PromptPayButton } from '@/components/promptpay-button';
 import { PageHeader } from '@/components/page-header';
+import { SavedViews } from '@/components/saved-views';
 import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDate, fmtDateTime, saveUrl } from '@/lib/utils';
 import { useListUrlState } from '@/lib/use-url-state';
@@ -91,7 +93,18 @@ function PaymentsPageContent() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon={CreditCard} title="การชำระเงิน" description="เบี้ยรับเข้า และสินไหมจ่ายออก" />
+      <PageHeader
+        icon={CreditCard}
+        title="การชำระเงิน"
+        description="เบี้ยรับเข้า และสินไหมจ่ายออก"
+        actions={
+          <Button variant="outline" asChild>
+            <Link href="/payments/overdue">
+              <AlarmClock /> งวดผ่อนเกินกำหนด
+            </Link>
+          </Button>
+        }
+      />
 
       <DataTable<PaymentDto>
         rows={data?.items}
@@ -147,6 +160,7 @@ function PaymentsPageContent() {
                 }).unwrap()
               }
             />
+            <SavedViews pageKey="payments" />
           </>
         }
         columns={[

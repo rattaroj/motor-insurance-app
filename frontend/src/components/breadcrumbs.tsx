@@ -13,6 +13,7 @@ const SEGMENT_LABEL: Record<string, string> = {
   renewals: 'ต่ออายุ',
   claims: 'เคลม',
   payments: 'การชำระเงิน',
+  overdue: 'งวดผ่อนเกินกำหนด',
   notifications: 'การแจ้งเตือน',
   reports: 'รายงาน',
   admin: 'ผู้ดูแลระบบ',

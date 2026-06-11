@@ -25,6 +25,7 @@ export const P = {
   PaymentSettle: 'payment.settle',
   DashboardRead: 'dashboard.read',
   NotificationRead: 'notification.read',
+  NotificationManage: 'notification.manage',
   RatingRead: 'rating.read',
   RatingManage: 'rating.manage',
   UserRead: 'user.read',
@@ -43,6 +44,7 @@ export const ROUTE_PERMISSION: Record<string, string> = {
   '/notifications': P.NotificationRead,
   '/admin/users': P.UserRead,
   '/master/rates': P.RatingManage,
+  '/master/templates': P.NotificationManage,
   '/master': P.LookupManage,
 };
 

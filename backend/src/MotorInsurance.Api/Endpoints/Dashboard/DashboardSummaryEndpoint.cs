@@ -15,13 +15,15 @@ public record DashboardSummaryDto(
     int PoliciesActive,
     int ClaimsOpen,
     int PaymentsPending,
-    decimal PaymentsPendingAmount);
+    decimal PaymentsPendingAmount,
+    int InstallmentsOverdue);
 
 /// <summary>GET /api/dashboard/summary — headline counts for the dashboard.</summary>
 public class DashboardSummaryEndpoint : EndpointWithoutRequest<DashboardSummaryDto>
 {
     private readonly IAppDbContext _db;
-    public DashboardSummaryEndpoint(IAppDbContext db) => _db = db;
+    private readonly IDateTimeProvider _clock;
+    public DashboardSummaryEndpoint(IAppDbContext db, IDateTimeProvider clock) => (_db, _clock) = (db, clock);
 
     public override void Configure()
     {
@@ -32,6 +34,7 @@ public class DashboardSummaryEndpoint : EndpointWithoutRequest<DashboardSummaryD
     public override async Task HandleAsync(CancellationToken ct)
     {
         var pending = _db.Payments.Where(p => p.Status == PaymentStatus.Pending);
+        var today = DateOnly.FromDateTime(_clock.UtcNow.Date);
 
         Response = new DashboardSummaryDto(
             Customers: await _db.Customers.CountAsync(ct),
@@ -42,6 +45,12 @@ public class DashboardSummaryEndpoint : EndpointWithoutRequest<DashboardSummaryD
             ClaimsOpen: await _db.Claims.CountAsync(
                 c => c.Status != ClaimStatus.Closed && c.Status != ClaimStatus.Rejected, ct),
             PaymentsPending: await pending.CountAsync(ct),
-            PaymentsPendingAmount: await pending.SumAsync(p => p.Amount, ct));
+            PaymentsPendingAmount: await pending.SumAsync(p => p.Amount, ct),
+            InstallmentsOverdue: await _db.Payments.CountAsync(
+                p => p.Direction == PaymentDirection.Inbound
+                     && p.Status == PaymentStatus.Pending
+                     && p.InstallmentSeq != null
+                     && p.DueDate != null
+                     && p.DueDate < today, ct));
     }
 }

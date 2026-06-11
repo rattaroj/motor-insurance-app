@@ -2,7 +2,8 @@
 
 import { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Car } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, Car, Pencil } from 'lucide-react';
 import { useGetVehiclesQuery, POWERTRAIN_LABELS, type VehicleDto } from '@/lib/api/insuranceApi';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/data-table';
@@ -46,7 +47,14 @@ function VehiclesPageContent() {
         searchPlaceholder="ค้นหาทะเบียน / ยี่ห้อ / เจ้าของ"
         emptyText="ยังไม่มีรถยนต์"
         columns={[
-          { header: 'ทะเบียน', cell: (v) => <span className="font-medium">{v.registrationNo}</span> },
+          {
+            header: 'ทะเบียน',
+            cell: (v) => (
+              <Link href={`/vehicles/${v.id}`} className="font-medium text-primary hover:underline">
+                {v.registrationNo}
+              </Link>
+            ),
+          },
           { header: 'จังหวัด', cell: (v) => v.province },
           { header: 'ยี่ห้อ', cell: (v) => v.brand },
           { header: 'รุ่น', cell: (v) => v.model },
@@ -54,6 +62,17 @@ function VehiclesPageContent() {
           { header: 'พลังงาน', cell: (v) => POWERTRAIN_LABELS[v.powertrain] },
           { header: 'ปี', cell: (v) => <span className="tabular-nums">{v.year}</span> },
           { header: 'เจ้าของ', cell: (v) => v.customerName },
+          {
+            header: 'จัดการ',
+            className: 'text-right',
+            cell: (v) => (
+              <Can permission={P.VehicleWrite}>
+                <Button size="sm" variant="ghost" aria-label="แก้ไข" onClick={() => router.push(`/vehicles/${v.id}/edit`)}>
+                  <Pencil />
+                </Button>
+              </Can>
+            ),
+          },
         ]}
       />
     </div>

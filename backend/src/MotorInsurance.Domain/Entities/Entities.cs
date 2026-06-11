@@ -367,3 +367,15 @@ public class Notification
     public DateTime CreatedAt { get; set; }
     public Policy? Policy { get; set; }
 }
+
+/// <summary>
+/// Editable subject/body template for a notification kind (keyed by <see cref="TemplateKey"/>,
+/// e.g. "renewal", "installment"). Bodies use {{placeholder}} tokens substituted at send time.
+/// </summary>
+public class NotificationTemplate
+{
+    public long Id { get; set; }
+    public string TemplateKey { get; set; } = default!;
+    public string Subject { get; set; } = default!;
+    public string Body { get; set; } = default!;
+}

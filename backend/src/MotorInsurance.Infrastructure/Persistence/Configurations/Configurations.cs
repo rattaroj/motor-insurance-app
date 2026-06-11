@@ -559,3 +559,17 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
             .HasForeignKey(x => x.PolicyId).OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+public class NotificationTemplateConfiguration : IEntityTypeConfiguration<NotificationTemplate>
+{
+    public void Configure(EntityTypeBuilder<NotificationTemplate> b)
+    {
+        b.ToTable("notification_template");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id");
+        b.Property(x => x.TemplateKey).HasColumnName("template_key").HasMaxLength(40).IsRequired();
+        b.Property(x => x.Subject).HasColumnName("subject").HasMaxLength(200).IsRequired();
+        b.Property(x => x.Body).HasColumnName("body").HasMaxLength(2000).IsRequired();
+        b.HasIndex(x => x.TemplateKey).IsUnique();
+    }
+}

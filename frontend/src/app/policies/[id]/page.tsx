@@ -47,6 +47,7 @@ import { Can } from '@/components/can';
 import { PromptPayButton } from '@/components/promptpay-button';
 import { ImageGallery } from '@/components/image-preview';
 import { PageHeader } from '@/components/page-header';
+import { AuditFooter } from '@/components/audit-footer';
 import { P } from '@/lib/auth/permissions';
 import { apiError, cn, fmtBaht, fmtDate, fmtDateTime, saveUrl } from '@/lib/utils';
 
@@ -524,6 +525,8 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
           {(history ?? []).length === 0 && <p className="text-sm text-muted-foreground">ยังไม่มีประวัติ</p>}
         </CardContent>
       </Card>
+
+      <AuditFooter audit={policy.audit} />
 
       {/* Cancel dialog */}
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>

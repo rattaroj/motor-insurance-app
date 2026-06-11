@@ -4,6 +4,7 @@ using MotorInsurance.Api.Authorization;
 using MotorInsurance.Application.Claims;
 using MotorInsurance.Application.Common.Exceptions;
 using MotorInsurance.Application.Common.Interfaces;
+using MotorInsurance.Application.Common.Models;
 using MotorInsurance.Domain.Entities;
 using Perms = MotorInsurance.Application.Common.Authorization.Permissions;
 
@@ -16,7 +17,8 @@ public record ClaimDetailDto(
     DateOnly IncidentDate, string? Description, decimal ClaimedAmount, decimal? ApprovedAmount, string? RejectReason,
     long? GarageId, string? GarageName, string? GaragePhone, string? SurveyorName,
     IReadOnlyList<ClaimPhotoDto> Photos,
-    IReadOnlyList<ClaimRiskFlag> RiskFlags);
+    IReadOnlyList<ClaimRiskFlag> RiskFlags,
+    AuditInfo Audit);
 
 /// <summary>GET /api/claims/{id} — claim detail incl. garage, surveyor and damage photos.</summary>
 public class GetClaimEndpoint : EndpointWithoutRequest<ClaimDetailDto>
@@ -53,6 +55,10 @@ public class GetClaimEndpoint : EndpointWithoutRequest<ClaimDetailDto>
                 x.SurveyorName,
                 PolicyEffectiveDate = x.Policy.EffectiveDate,
                 PolicySumInsured = x.Policy.SumInsured,
+                x.CreatedUser,
+                x.CreatedAt,
+                x.UpdatedUser,
+                x.UpdatedAt,
             })
             .FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException(nameof(Claim), id);
@@ -71,6 +77,7 @@ public class GetClaimEndpoint : EndpointWithoutRequest<ClaimDetailDto>
         Response = new ClaimDetailDto(
             c.Id, c.ClaimNo, c.PolicyId, c.PolicyNo, c.Status.ToString(),
             c.IncidentDate, c.Description, c.ClaimedAmount, c.ApprovedAmount, c.RejectReason,
-            c.GarageId, c.GarageName, c.GaragePhone, c.SurveyorName, photos, riskFlags);
+            c.GarageId, c.GarageName, c.GaragePhone, c.SurveyorName, photos, riskFlags,
+            new AuditInfo(c.CreatedUser, c.CreatedAt, c.UpdatedUser, c.UpdatedAt));
     }
 }

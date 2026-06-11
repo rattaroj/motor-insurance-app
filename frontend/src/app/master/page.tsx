@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Car, UserSquare2, ShieldPlus, Wrench, SlidersHorizontal, ChevronRight, Database, type LucideIcon } from 'lucide-react';
+import { Car, UserSquare2, ShieldPlus, Wrench, SlidersHorizontal, ChevronRight, Database, MessageSquareText, type LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/page-header';
 
@@ -42,6 +42,12 @@ const sections: Section[] = [
     title: 'พิกัดอัตราเบี้ย',
     description: 'อัตราเบี้ยฐานต่อชั้นความคุ้มครอง ปรับได้โดยไม่ต้อง deploy',
     icon: SlidersHorizontal,
+  },
+  {
+    href: '/master/templates',
+    title: 'เทมเพลตการแจ้งเตือน',
+    description: 'ปรับข้อความเตือนต่ออายุ/งวดผ่อน ด้วยตัวแปร {{...}} ได้โดยไม่ต้อง deploy',
+    icon: MessageSquareText,
   },
 ];
 

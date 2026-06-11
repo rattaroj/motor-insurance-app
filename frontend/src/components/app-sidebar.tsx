@@ -20,6 +20,7 @@ import {
   Bell,
   Users2,
   SlidersHorizontal,
+  MessageSquareText,
   ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
@@ -58,6 +59,7 @@ const nav: NavItem[] = [
       { href: '/master/riders', label: 'ความคุ้มครองเสริม', icon: ShieldPlus },
       { href: '/master/garages', label: 'อู่/ศูนย์ซ่อม', icon: Wrench },
       { href: '/master/rates', label: 'พิกัดอัตราเบี้ย', icon: SlidersHorizontal },
+      { href: '/master/templates', label: 'เทมเพลตการแจ้งเตือน', icon: MessageSquareText },
     ],
   },
 ];

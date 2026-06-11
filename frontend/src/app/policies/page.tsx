@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/page-header';
 import { TablePagination } from '@/components/data-table';
 import { Inbox, ShieldCheck } from 'lucide-react';
 import { useListUrlState } from '@/lib/use-url-state';
+import { SavedViews } from '@/components/saved-views';
 import { fmtBaht } from '@/lib/utils';
 
 const STATUSES = ['Draft', 'Quoted', 'Issued', 'Active', 'Cancelled', 'Expired'];
@@ -52,6 +53,7 @@ function PoliciesPageContent() {
               filename="policies.csv"
               fetchUrl={() => exportPolicies({ status: status === 'all' ? undefined : status }).unwrap()}
             />
+            <SavedViews pageKey="policies" />
           </>
         }
       />

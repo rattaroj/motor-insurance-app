@@ -156,6 +156,7 @@ export default function DashboardPage() {
   const canClaims = perms.includes(P.ClaimRead);
   const canRenew = perms.includes(P.PolicyRead);
   const canNotif = perms.includes(P.NotificationRead);
+  const canPayments = perms.includes(P.PaymentRead);
 
   const { data: aging, isLoading: agingLoading } = useGetClaimsAgingQuery(undefined, { skip: !canClaims });
   const { data: expiring, isLoading: expiringLoading } = useGetExpiringPoliciesQuery(
@@ -170,7 +171,8 @@ export default function DashboardPage() {
   const breachedClaims = (aging ?? []).filter((a) => a.breached).length;
   const expiringCount = expiring?.length ?? 0;
   const failedCount = failedNotif?.totalCount ?? 0;
-  const showAlerts = canClaims || canRenew || canNotif;
+  const overdueCount = data?.installmentsOverdue ?? 0;
+  const showAlerts = canClaims || canRenew || canNotif || canPayments;
 
   const show = (n?: number) => (n ?? '—') as string | number;
 
@@ -211,6 +213,16 @@ export default function DashboardPage() {
                 loading={expiringLoading}
               />
             )}
+            {canPayments && (
+              <AlertCard
+                href="/payments/overdue"
+                label="งวดผ่อนเกินกำหนด"
+                count={overdueCount}
+                icon={AlarmClock}
+                tone="red"
+                loading={isLoading}
+              />
+            )}
             {canNotif && (
               <AlertCard
                 href="/notifications"
@@ -245,7 +257,7 @@ export default function DashboardPage() {
             {isLoading ? (
               <Skeleton className="mt-1 ml-auto h-8 w-28" />
             ) : (
-              <p className="text-2xl font-semibold tabular-nums text-blue-700">
+              <p className="text-2xl font-semibold tabular-nums text-blue-700 dark:text-blue-400">
                 {data ? fmtBaht(data.paymentsPendingAmount) : '—'}
               </p>
             )}

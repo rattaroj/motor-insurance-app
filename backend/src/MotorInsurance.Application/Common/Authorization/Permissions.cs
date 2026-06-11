@@ -37,6 +37,7 @@ public static class Permissions
     public const string DashboardRead = "dashboard.read";
 
     public const string NotificationRead = "notification.read";
+    public const string NotificationManage = "notification.manage";
 
     public const string RatingRead = "rating.read";
     public const string RatingManage = "rating.manage";

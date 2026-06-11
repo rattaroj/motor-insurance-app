@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Api.Authorization;
 using MotorInsurance.Application.Common.Exceptions;
 using MotorInsurance.Application.Common.Interfaces;
+using MotorInsurance.Application.Common.Models;
 using MotorInsurance.Domain.Entities;
 using Perms = MotorInsurance.Application.Common.Authorization.Permissions;
 
@@ -23,7 +24,8 @@ public record PolicyDetailDto(
     long? PreviousPolicyId,
     IReadOnlyList<string> Riders,
     IReadOnlyList<PolicyDriverDto> Drivers,
-    IReadOnlyList<EndorsementDto> Endorsements);
+    IReadOnlyList<EndorsementDto> Endorsements,
+    AuditInfo Audit);
 
 /// <summary>GET /api/policies/{id}.</summary>
 public class GetPolicyEndpoint : EndpointWithoutRequest<PolicyDetailDto>
@@ -77,7 +79,8 @@ public class GetPolicyEndpoint : EndpointWithoutRequest<PolicyDetailDto>
             policy.Status.ToString(), policy.CoverageType.ToString(),
             policy.SumInsured, policy.Premium, policy.BasePremium, policy.NcbPercent, policy.Deductible,
             policy.EffectiveDate, policy.ExpiryDate,
-            policy.PreviousPolicyId, riders, drivers, endorsements);
+            policy.PreviousPolicyId, riders, drivers, endorsements,
+            new AuditInfo(policy.CreatedUser, policy.CreatedAt, policy.UpdatedUser, policy.UpdatedAt));
     }
 
     private async Task<long?> ResolveQuotationIdAsync(Policy policy, CancellationToken ct)

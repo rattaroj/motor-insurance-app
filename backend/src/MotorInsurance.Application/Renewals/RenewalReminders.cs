@@ -1,5 +1,6 @@
 using System.Globalization;
 using MotorInsurance.Application.Common.Interfaces;
+using MotorInsurance.Application.Notifications;
 using MotorInsurance.Domain.Entities;
 
 namespace MotorInsurance.Application.Renewals;
@@ -33,11 +34,21 @@ public static class RenewalReminders
         var (channel, recipient) = PickChannel(email, phone, lineUserId);
 
         var expiryText = expiry?.ToString("dd/MM/yyyy", Th) ?? "-";
-        var subject = $"แจ้งเตือนต่ออายุกรมธรรม์ {policyNo}";
-        var body = $"เรียน {customerName}\nกรมธรรม์เลขที่ {policyNo} จะหมดอายุวันที่ {expiryText} " +
-                   "กรุณาติดต่อเจ้าหน้าที่เพื่อต่ออายุความคุ้มครอง";
-        if (estimatedPremium is { } premium)
-            body += $"\nเบี้ยต่ออายุโดยประมาณ {premium.ToString("N2", Th)} บาท (ราคาจริงยืนยันเมื่อออกกรมธรรม์)";
+        var premiumText = estimatedPremium is { } premium
+            ? $"{premium.ToString("N2", Th)} บาท (ราคาจริงยืนยันเมื่อออกกรมธรรม์)"
+            : "ยืนยันเมื่อออกกรมธรรม์";
+        var vars = new Dictionary<string, string>
+        {
+            ["customerName"] = customerName,
+            ["policyNo"] = policyNo,
+            ["expiryDate"] = expiryText,
+            ["estimatedPremium"] = premiumText,
+        };
+        var (subject, body) = await NotificationTemplates.RenderAsync(
+            db, "renewal", vars,
+            "แจ้งเตือนต่ออายุกรมธรรม์ {{policyNo}}",
+            "เรียน {{customerName}}\nกรมธรรม์เลขที่ {{policyNo}} จะหมดอายุวันที่ {{expiryDate}} " +
+            "กรุณาติดต่อเจ้าหน้าที่เพื่อต่ออายุความคุ้มครอง\nเบี้ยต่ออายุโดยประมาณ {{estimatedPremium}}", ct);
 
         var ok = await sender.SendAsync(new NotificationMessage(channel, recipient, subject, body), ct);
 

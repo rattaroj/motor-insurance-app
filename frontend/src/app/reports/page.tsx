@@ -1,6 +1,7 @@
 'use client';
 
-import { useGetAnalyticsQuery, type LabelCount } from '@/lib/api/insuranceApi';
+import { useState } from 'react';
+import { useGetAnalyticsQuery, useExportAnalyticsMutation, type LabelCount } from '@/lib/api/insuranceApi';
 import { BarChart3 } from 'lucide-react';
 import {
   Bar,
@@ -13,7 +14,10 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/page-header';
+import { ExportButton } from '@/components/export-button';
 import { cn, fmtBaht } from '@/lib/utils';
 
 const POLICY_STATUS_TH: Record<string, string> = {
@@ -66,26 +70,62 @@ function BarList({ items, labels, color }: { items: LabelCount[]; labels: Record
 }
 
 export default function ReportsPage() {
-  const { data, isLoading } = useGetAnalyticsQuery();
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const { data, isFetching } = useGetAnalyticsQuery({ from: from || undefined, to: to || undefined });
+  const [exportAnalytics] = useExportAnalyticsMutation();
 
-  if (isLoading || !data) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-40" />
-        <div className="grid gap-4 sm:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
-        </div>
-        <Skeleton className="h-64" />
-      </div>
-    );
-  }
-
-  const monthly = data.premiumByMonth.map((m) => ({ ...m, name: monthLabel(m.month) }));
+  const monthly = (data?.premiumByMonth ?? []).map((m) => ({ ...m, name: monthLabel(m.month) }));
 
   return (
     <div className="space-y-6">
-      <PageHeader icon={BarChart3} title="รายงานและวิเคราะห์" description="ภาพรวมเบี้ยรับ ค่าสินไหม และพอร์ตกรมธรรม์" />
+      <PageHeader
+        icon={BarChart3}
+        title="รายงานและวิเคราะห์"
+        description="ภาพรวมเบี้ยรับ ค่าสินไหม และพอร์ตกรมธรรม์"
+        actions={
+          <>
+            <div className="flex items-end gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="from" className="text-xs text-muted-foreground">ตั้งแต่</Label>
+                <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 w-40" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="to" className="text-xs text-muted-foreground">ถึง</Label>
+                <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 w-40" />
+              </div>
+              {(from || to) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFrom('');
+                    setTo('');
+                  }}
+                  className="h-9 px-2 text-sm text-muted-foreground hover:text-foreground"
+                >
+                  ล้าง
+                </button>
+              )}
+            </div>
+            <ExportButton
+              filename="analytics.csv"
+              fetchUrl={() => exportAnalytics({ from: from || undefined, to: to || undefined }).unwrap()}
+            />
+          </>
+        }
+      />
 
+      {!data ? (
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
+          <Skeleton className="h-64" />
+        </div>
+      ) : (
+        <div className={cn('space-y-6', isFetching && 'opacity-60 transition-opacity')}>
       <div className="grid gap-4 sm:grid-cols-3">
         <Kpi label="เบี้ยรับรวม" value={fmtBaht(data.premiumWritten)} accent="text-blue-700 dark:text-blue-400" />
         <Kpi label="ค่าสินไหมจ่าย" value={fmtBaht(data.claimsPaid)} accent="text-amber-700 dark:text-amber-400" />
@@ -150,6 +190,8 @@ export default function ReportsPage() {
           <CardContent><BarList items={data.claimsByStatus} labels={CLAIM_STATUS_TH} color="bg-amber-500" /></CardContent>
         </Card>
       </div>
+        </div>
+      )}
     </div>
   );
 }

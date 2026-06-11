@@ -37,3 +37,6 @@ public record ClaimHistoryDto(
     decimal? ApprovedAmount,
     DateTime ValidFrom,
     DateTime ValidTo);
+
+/// <summary>Audit trail surfaced from BaseEntity columns: who created/last-updated a record, and when.</summary>
+public record AuditInfo(string? CreatedUser, DateTime CreatedAt, string? UpdatedUser, DateTime? UpdatedAt);

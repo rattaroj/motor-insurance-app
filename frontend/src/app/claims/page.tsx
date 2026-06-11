@@ -11,6 +11,8 @@ import {
   useApproveClaimMutation,
   useRejectClaimMutation,
   useGetPoliciesQuery,
+  useGetGaragesQuery,
+  useBulkAssignClaimsMutation,
   useExportClaimsMutation,
   type ClaimStatus,
   type ClaimDto,
@@ -35,6 +37,7 @@ import { Can } from '@/components/can';
 import { ClaimManageDialog } from '@/components/claim-manage-dialog';
 import { ClaimsAgingPanel } from '@/components/claims-aging-panel';
 import { PageHeader } from '@/components/page-header';
+import { SavedViews } from '@/components/saved-views';
 import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDate } from '@/lib/utils';
 import { useListUrlState } from '@/lib/use-url-state';
@@ -85,6 +88,43 @@ function ClaimsPageContent() {
   const [reason, setReason] = useState('');
   const [manageId, setManageId] = useState<number | null>(null);
 
+  // Bulk assignment of garage/surveyor to selected claims.
+  const { data: garages } = useGetGaragesQuery();
+  const [bulkAssign, { isLoading: bulkAssigning }] = useBulkAssignClaimsMutation();
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkGarage, setBulkGarage] = useState('none');
+  const [bulkSurveyor, setBulkSurveyor] = useState('');
+
+  const rows = data?.items ?? [];
+  const allSelected = rows.length > 0 && rows.every((c) => selected.has(c.id));
+  const toggle = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  const toggleAll = () =>
+    setSelected(allSelected ? new Set() : new Set(rows.map((c) => c.id)));
+
+  const submitBulkAssign = async () => {
+    const ok = await run(
+      () =>
+        bulkAssign({
+          claimIds: [...selected],
+          garageId: bulkGarage === 'none' ? null : Number(bulkGarage),
+          surveyorName: bulkSurveyor.trim() || null,
+        }).unwrap(),
+      'มอบหมายเคลมที่เลือกแล้ว',
+    );
+    if (ok) {
+      setBulkOpen(false);
+      setSelected(new Set());
+      setBulkGarage('none');
+      setBulkSurveyor('');
+    }
+  };
+
   const activePolicies = (policies?.items ?? []).filter((p) => p.status === 'Active');
 
   const run = async (fn: () => Promise<unknown>, ok: string) => {
@@ -114,6 +154,23 @@ function ClaimsPageContent() {
       />
 
       <ClaimsAgingPanel />
+
+      {/* Bulk action bar — only when at least one claim is selected. */}
+      {selected.size > 0 && (
+        <Can permission={P.ClaimReview}>
+          <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-2 text-sm">
+            <span>เลือก {selected.size} เคลม</span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                ล้าง
+              </Button>
+              <Button size="sm" onClick={() => setBulkOpen(true)}>
+                <Wrench /> มอบหมายที่เลือก
+              </Button>
+            </div>
+          </div>
+        </Can>
+      )}
 
       <DataTable<ClaimDto>
         rows={data?.items}
@@ -153,9 +210,32 @@ function ClaimsPageContent() {
                 }).unwrap()
               }
             />
+            <SavedViews pageKey="claims" />
           </>
         }
         columns={[
+          {
+            header: (
+              <input
+                type="checkbox"
+                aria-label="เลือกทั้งหมด"
+                className="h-4 w-4 cursor-pointer accent-primary"
+                checked={allSelected}
+                onChange={toggleAll}
+                disabled={rows.length === 0}
+              />
+            ),
+            className: 'w-10',
+            cell: (c) => (
+              <input
+                type="checkbox"
+                aria-label={`เลือก ${c.claimNo}`}
+                className="h-4 w-4 cursor-pointer accent-primary"
+                checked={selected.has(c.id)}
+                onChange={() => toggle(c.id)}
+              />
+            ),
+          },
           {
             header: 'เลขที่',
             cell: (c) => (
@@ -377,6 +457,51 @@ function ClaimsPageContent() {
       </Dialog>
 
       <ClaimManageDialog claimId={manageId} onClose={() => setManageId(null)} />
+
+      {/* Bulk assign garage/surveyor to the selected claims. */}
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>มอบหมายเคลมที่เลือก</DialogTitle>
+            <DialogDescription>กำหนดอู่/ศูนย์ซ่อมและเจ้าหน้าที่สำรวจให้ {selected.size} เคลมที่เลือกพร้อมกัน</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>อู่/ศูนย์ซ่อม</Label>
+              <Select value={bulkGarage} onValueChange={setBulkGarage}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— ไม่ระบุ —</SelectItem>
+                  {garages?.map((g) => (
+                    <SelectItem key={g.id} value={String(g.id)}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulk-surveyor">เจ้าหน้าที่สำรวจ</Label>
+              <Input
+                id="bulk-surveyor"
+                value={bulkSurveyor}
+                onChange={(e) => setBulkSurveyor(e.target.value)}
+                placeholder="ชื่อเจ้าหน้าที่สำรวจ (ไม่บังคับ)"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)}>
+              ยกเลิก
+            </Button>
+            <Button onClick={submitBulkAssign} disabled={bulkAssigning}>
+              <Wrench /> มอบหมาย {selected.size} เคลม
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -45,6 +45,7 @@ public class PolicyIssuanceSliceTests
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<InstallmentPlan> InstallmentPlans => Set<InstallmentPlan>();
         public DbSet<Notification> Notifications => Set<Notification>();
+        public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>();
         public DbSet<AppUser> Users => Set<AppUser>();
         public DbSet<Role> Roles => Set<Role>();
         public DbSet<Permission> Permissions => Set<Permission>();
