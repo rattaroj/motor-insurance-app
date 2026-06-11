@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { toast } from 'sonner';
 import { Bell, RotateCw } from 'lucide-react';
 import { useGetNotificationsQuery, useResendNotificationMutation } from '@/lib/api/insuranceApi';
@@ -16,9 +16,11 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Can } from '@/components/can';
+import { PageHeader } from '@/components/page-header';
+import { StatusBadge } from '@/components/StatusBadge';
 import { P } from '@/lib/auth/permissions';
-import { useDebouncedValue } from '@/lib/use-debounced';
-import { apiError, cn, fmtDateTime } from '@/lib/utils';
+import { useListUrlState } from '@/lib/use-url-state';
+import { apiError, fmtDateTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
 
@@ -35,7 +37,7 @@ const baseColumns: Column<NotificationDto>[] = [
   {
     header: 'ช่องทาง',
     cell: (n) => (
-      <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+      <span className="inline-block rounded-full bg-slate-500/10 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300">
         {channelLabel[n.channel] ?? n.channel}
       </span>
     ),
@@ -45,23 +47,12 @@ const baseColumns: Column<NotificationDto>[] = [
   {
     header: 'สถานะ',
     className: 'text-center',
-    cell: (n) => (
-      <span
-        className={cn(
-          'inline-block rounded-full px-2 py-0.5 text-xs font-medium',
-          n.status === 'Sent' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700',
-        )}
-      >
-        {n.status === 'Sent' ? 'ส่งแล้ว' : 'ล้มเหลว'}
-      </span>
-    ),
+    cell: (n) => <StatusBadge status={n.status} />,
   },
 ];
 
-export default function NotificationsPage() {
-  const [page, setPage] = useState(1);
-  const [searchInput, setSearchInput] = useState('');
-  const search = useDebouncedValue(searchInput, 300);
+function NotificationsPageContent() {
+  const { page, setPage, searchInput, onSearchChange, search } = useListUrlState();
   const { data, isFetching } = useGetNotificationsQuery({ page, pageSize: PAGE_SIZE, search });
   const [resend, { isLoading: resending }] = useResendNotificationMutation();
   // Notification awaiting resend confirmation (null = dialog closed).
@@ -100,15 +91,11 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Bell className="h-5 w-5" />
-        </span>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">ประวัติการแจ้งเตือน</h1>
-          <p className="text-sm text-muted-foreground">บันทึกการแจ้งเตือนที่ส่งออก (เตือนต่ออายุ ฯลฯ) ทุกช่องทาง</p>
-        </div>
-      </div>
+      <PageHeader
+        icon={Bell}
+        title="ประวัติการแจ้งเตือน"
+        description="บันทึกการแจ้งเตือนที่ส่งออก (เตือนต่ออายุ ฯลฯ) ทุกช่องทาง"
+      />
 
       <DataTable<NotificationDto>
         rows={data?.items}
@@ -120,10 +107,7 @@ export default function NotificationsPage() {
         totalCount={data?.totalCount ?? 0}
         onPageChange={setPage}
         search={searchInput}
-        onSearchChange={(v) => {
-          setSearchInput(v);
-          setPage(1);
-        }}
+        onSearchChange={onSearchChange}
         searchPlaceholder="ค้นหากรมธรรม์ / ผู้รับ / หัวข้อ"
         emptyText="ยังไม่มีประวัติการแจ้งเตือน"
       />
@@ -149,5 +133,13 @@ export default function NotificationsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function NotificationsPage() {
+  return (
+    <Suspense fallback={null}>
+      <NotificationsPageContent />
+    </Suspense>
   );
 }

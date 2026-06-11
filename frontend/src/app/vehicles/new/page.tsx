@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Car } from 'lucide-react';
 import {
   useCreateVehicleMutation,
   useGetCustomersQuery,
@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ProvinceSelect } from '@/components/address-select';
+import { PageHeader } from '@/components/page-header';
 import { apiError } from '@/lib/utils';
 
 const emptyForm = {
@@ -69,8 +70,7 @@ export default function NewVehiclePage() {
             <ArrowLeft /> กลับไปหน้ารถยนต์
           </Link>
         </Button>
-        <h1 className="text-2xl font-semibold tracking-tight">เพิ่มรถยนต์</h1>
-        <p className="text-sm text-muted-foreground">เลือกยี่ห้อ → รุ่น → รุ่นย่อย → ปี ตามลำดับ</p>
+        <PageHeader icon={Car} title="เพิ่มรถยนต์" description="เลือกยี่ห้อ → รุ่น → รุ่นย่อย → ปี ตามลำดับ" />
       </div>
 
       <Card>

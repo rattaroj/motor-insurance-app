@@ -378,6 +378,15 @@ export interface ClaimDetailDto {
   riskFlags: ClaimRiskFlag[];
 }
 
+/** One temporal-history row of a claim (the interval a status/amount combination was current). */
+export interface ClaimHistoryDto {
+  status: ClaimStatus;
+  claimedAmount: number;
+  approvedAmount: number | null;
+  validFrom: string;
+  validTo: string;
+}
+
 export interface PaymentDto {
   id: number;
   paymentNo: string;
@@ -1159,6 +1168,10 @@ export const insuranceApi = createApi({
       query: (id) => `claims/${id}`,
       providesTags: (_r, _e, id) => [{ type: 'Claim', id }],
     }),
+    getClaimHistory: build.query<ClaimHistoryDto[], number>({
+      query: (id) => `claims/${id}/history`,
+      providesTags: (_r, _e, id) => [{ type: 'Claim', id }],
+    }),
     getClaimsAging: build.query<ClaimAgingDto[], void>({
       query: () => 'claims/aging',
       providesTags: ['Claim'],
@@ -1405,6 +1418,7 @@ export const {
   useApproveClaimMutation,
   useRejectClaimMutation,
   useGetClaimQuery,
+  useGetClaimHistoryQuery,
   useGetClaimsAgingQuery,
   useGetClaimLetterMutation,
   useAssignClaimMutation,

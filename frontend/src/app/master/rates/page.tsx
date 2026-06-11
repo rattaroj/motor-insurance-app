@@ -33,6 +33,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Can } from '@/components/can';
+import { PageHeader } from '@/components/page-header';
 import { P } from '@/lib/auth/permissions';
 import { apiError, fmtDate } from '@/lib/utils';
 
@@ -54,17 +55,11 @@ const pct = (v: number) => `${(v * 100).toLocaleString('th-TH', { maximumFractio
 export default function PremiumRatesPage() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <SlidersHorizontal className="h-5 w-5" />
-        </span>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">พิกัดอัตราเบี้ย</h1>
-          <p className="text-sm text-muted-foreground">
-            ปรับอัตราเบี้ยฐาน โหลดตามอายุรถ และส่วนลดค่าเสียหายส่วนแรก ได้โดยไม่ต้อง deploy
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        icon={SlidersHorizontal}
+        title="พิกัดอัตราเบี้ย"
+        description="ปรับอัตราเบี้ยฐาน โหลดตามอายุรถ และส่วนลดค่าเสียหายส่วนแรก ได้โดยไม่ต้อง deploy"
+      />
 
       <CoverageRatesCard />
       <AgeBandsCard />

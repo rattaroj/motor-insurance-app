@@ -3,7 +3,7 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Plus, Wallet, FileSignature, FileDown, Receipt, SlidersHorizontal, Check } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Plus, Wallet, FileSignature, FileDown, Receipt, SlidersHorizontal, Check, ShieldCheck } from 'lucide-react';
 import {
   useGetPolicyQuery,
   useGetPolicyHistoryQuery,
@@ -46,6 +46,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Can } from '@/components/can';
 import { PromptPayButton } from '@/components/promptpay-button';
 import { ImageGallery } from '@/components/image-preview';
+import { PageHeader } from '@/components/page-header';
 import { P } from '@/lib/auth/permissions';
 import { apiError, cn, fmtBaht, fmtDate, fmtDateTime, saveUrl } from '@/lib/utils';
 
@@ -156,17 +157,17 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
         <ArrowLeft className="h-4 w-4" /> กลับ
       </Link>
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">{policy.policyNo}</h1>
-            <StatusBadge status={policy.status} />
-          </div>
-          <p className="text-sm text-muted-foreground">
+      <PageHeader
+        icon={ShieldCheck}
+        title={policy.policyNo}
+        badge={<StatusBadge status={policy.status} />}
+        description={
+          <>
             {policy.customerName} · {policy.vehicleRegistration}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+          </>
+        }
+        actions={
+          <>
           <Button variant="outline" disabled={pdfLoading} onClick={downloadPolicyPdf}>
             <FileDown /> {pdfLoading ? 'กำลังสร้าง…' : 'PDF กรมธรรม์'}
           </Button>
@@ -209,8 +210,9 @@ export default function PolicyDetailPage({ params }: { params: Promise<{ id: str
               <XCircle /> ยกเลิก
             </Button>
           </Can>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-4">
         {[

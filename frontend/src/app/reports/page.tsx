@@ -1,8 +1,19 @@
 'use client';
 
 import { useGetAnalyticsQuery, type LabelCount } from '@/lib/api/insuranceApi';
+import { BarChart3 } from 'lucide-react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 import { cn, fmtBaht } from '@/lib/utils';
 
 const POLICY_STATUS_TH: Record<string, string> = {
@@ -69,22 +80,19 @@ export default function ReportsPage() {
     );
   }
 
-  const maxMonth = Math.max(1, ...data.premiumByMonth.map((m) => m.premium));
+  const monthly = data.premiumByMonth.map((m) => ({ ...m, name: monthLabel(m.month) }));
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">รายงานและวิเคราะห์</h1>
-        <p className="text-sm text-muted-foreground">ภาพรวมเบี้ยรับ ค่าสินไหม และพอร์ตกรมธรรม์</p>
-      </div>
+      <PageHeader icon={BarChart3} title="รายงานและวิเคราะห์" description="ภาพรวมเบี้ยรับ ค่าสินไหม และพอร์ตกรมธรรม์" />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Kpi label="เบี้ยรับรวม" value={fmtBaht(data.premiumWritten)} accent="text-blue-700" />
-        <Kpi label="ค่าสินไหมจ่าย" value={fmtBaht(data.claimsPaid)} accent="text-amber-700" />
+        <Kpi label="เบี้ยรับรวม" value={fmtBaht(data.premiumWritten)} accent="text-blue-700 dark:text-blue-400" />
+        <Kpi label="ค่าสินไหมจ่าย" value={fmtBaht(data.claimsPaid)} accent="text-amber-700 dark:text-amber-400" />
         <Kpi
           label="Loss Ratio (สินไหม/เบี้ย)"
           value={`${(data.lossRatio * 100).toFixed(1)}%`}
-          accent={data.lossRatio > 0.7 ? 'text-red-600' : 'text-emerald-600'}
+          accent={data.lossRatio > 0.7 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}
         />
       </div>
 
@@ -93,19 +101,37 @@ export default function ReportsPage() {
           <CardTitle className="text-base">เบี้ยรับรายเดือน (12 เดือนล่าสุด)</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex h-56 gap-2">
-            {data.premiumByMonth.map((m) => (
-              <div key={m.month} className="flex h-full flex-1 flex-col items-center gap-1">
-                <div className="flex w-full flex-1 items-end">
-                  <div
-                    className="w-full rounded-t bg-blue-500 transition-all hover:bg-blue-600"
-                    style={{ height: `${(m.premium / maxMonth) * 100}%` }}
-                    title={fmtBaht(m.premium)}
-                  />
-                </div>
-                <span className="whitespace-nowrap text-[10px] text-muted-foreground">{monthLabel(m.month)}</span>
-              </div>
-            ))}
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthly} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  tickLine={false}
+                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={70}
+                  tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toLocaleString()}K` : String(v))}
+                />
+                <Tooltip
+                  formatter={(value) => [fmtBaht(Number(value)), 'เบี้ยรับ']}
+                  cursor={{ fill: 'hsl(var(--accent))', opacity: 0.5 }}
+                  contentStyle={{
+                    background: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 8,
+                    color: 'hsl(var(--popover-foreground))',
+                    fontSize: 13,
+                  }}
+                />
+                <Bar dataKey="premium" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={48} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </CardContent>
       </Card>

@@ -16,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Can } from '@/components/can';
+import { PageHeader } from '@/components/page-header';
 import { apiError } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/use-debounced';
 
@@ -165,24 +166,18 @@ export function MasterTable<T>({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          {Icon && (
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Icon className="h-5 w-5" />
-            </span>
-          )}
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-            {description && <p className="text-sm text-muted-foreground">{description}</p>}
-          </div>
-        </div>
-        <Can permission={permission}>
-          <Button onClick={() => setForm({ id: null, values: emptyValues() })}>
-            <Plus /> {addLabel}
-          </Button>
-        </Can>
-      </div>
+      <PageHeader
+        icon={Icon}
+        title={title}
+        description={description}
+        actions={
+          <Can permission={permission}>
+            <Button onClick={() => setForm({ id: null, values: emptyValues() })}>
+              <Plus /> {addLabel}
+            </Button>
+          </Can>
+        }
+      />
 
       <DataTable<T>
         rows={pageRows}

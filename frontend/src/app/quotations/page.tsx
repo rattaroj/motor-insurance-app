@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Plus, FileSignature, FileDown, Mail } from 'lucide-react';
+import { Plus, FileSignature, FileDown, Mail, FileText } from 'lucide-react';
 import {
   useGetQuotationsQuery,
   useIssuePolicyMutation,
@@ -26,9 +26,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Can } from '@/components/can';
+import { PageHeader } from '@/components/page-header';
 import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDate, saveUrl } from '@/lib/utils';
-import { useDebouncedValue } from '@/lib/use-debounced';
+import { useListUrlState } from '@/lib/use-url-state';
 
 const COVERAGES: { value: CoverageType; label: string }[] = [
   { value: 'Type1', label: 'ชั้น 1' },
@@ -50,11 +51,9 @@ const INSTALLMENT_OPTIONS = [
 /** Flat financing fee per installment plan — mirrors backend InstallmentPlanning.FlatFee. */
 const INSTALLMENT_FEE = 300;
 
-export default function QuotationsPage() {
+function QuotationsPageContent() {
   const router = useRouter();
-  const [page, setPage] = useState(1);
-  const [searchInput, setSearchInput] = useState('');
-  const search = useDebouncedValue(searchInput, 300);
+  const { page, setPage, searchInput, onSearchChange, search } = useListUrlState();
   const { data, isFetching } = useGetQuotationsQuery({ page, pageSize: PAGE_SIZE, search });
   const [issuePolicy, { isLoading: issuing }] = useIssuePolicyMutation();
   const [getPdf] = useGetQuotationDocumentMutation();
@@ -109,17 +108,18 @@ export default function QuotationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">ใบเสนอราคา</h1>
-          <p className="text-sm text-muted-foreground">คำนวณเบี้ยและออกกรมธรรม์</p>
-        </div>
-        <Can permission={P.QuotationWrite}>
-          <Button onClick={() => router.push('/quotations/new')}>
-            <Plus /> สร้างใบเสนอราคา
-          </Button>
-        </Can>
-      </div>
+      <PageHeader
+        icon={FileText}
+        title="ใบเสนอราคา"
+        description="คำนวณเบี้ยและออกกรมธรรม์"
+        actions={
+          <Can permission={P.QuotationWrite}>
+            <Button onClick={() => router.push('/quotations/new')}>
+              <Plus /> สร้างใบเสนอราคา
+            </Button>
+          </Can>
+        }
+      />
 
       <DataTable<QuotationDto>
         rows={data?.items}
@@ -130,10 +130,7 @@ export default function QuotationsPage() {
         totalCount={data?.totalCount ?? 0}
         onPageChange={setPage}
         search={searchInput}
-        onSearchChange={(v) => {
-          setSearchInput(v);
-          setPage(1);
-        }}
+        onSearchChange={onSearchChange}
         searchPlaceholder="ค้นหาเลขที่ / ลูกค้า / ทะเบียน"
         emptyText="ยังไม่มีใบเสนอราคา"
         columns={[
@@ -244,5 +241,13 @@ export default function QuotationsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function QuotationsPage() {
+  return (
+    <Suspense fallback={null}>
+      <QuotationsPageContent />
+    </Suspense>
   );
 }

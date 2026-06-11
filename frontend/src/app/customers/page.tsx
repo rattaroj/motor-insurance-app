@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users } from 'lucide-react';
 import { useGetCustomersQuery, useDeleteCustomerMutation, type CustomerDto } from '@/lib/api/insuranceApi';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/data-table';
@@ -16,17 +16,16 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Can } from '@/components/can';
+import { PageHeader } from '@/components/page-header';
 import { P } from '@/lib/auth/permissions';
 import { apiError } from '@/lib/utils';
-import { useDebouncedValue } from '@/lib/use-debounced';
+import { useListUrlState } from '@/lib/use-url-state';
 
 const PAGE_SIZE = 10;
 
-export default function CustomersPage() {
+function CustomersPageContent() {
   const router = useRouter();
-  const [page, setPage] = useState(1);
-  const [searchInput, setSearchInput] = useState('');
-  const search = useDebouncedValue(searchInput, 300);
+  const { page, setPage, searchInput, onSearchChange, search } = useListUrlState();
   const { data, isFetching } = useGetCustomersQuery({ page, pageSize: PAGE_SIZE, search });
   const [deleteCustomer, { isLoading: deleting }] = useDeleteCustomerMutation();
   const [deleteTarget, setDeleteTarget] = useState<CustomerDto | null>(null);
@@ -44,17 +43,18 @@ export default function CustomersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">ลูกค้า</h1>
-          <p className="text-sm text-muted-foreground">จัดการข้อมูลผู้เอาประกัน</p>
-        </div>
-        <Can permission={P.CustomerWrite}>
-          <Button onClick={() => router.push('/customers/new')}>
-            <Plus /> เพิ่มลูกค้า
-          </Button>
-        </Can>
-      </div>
+      <PageHeader
+        icon={Users}
+        title="ลูกค้า"
+        description="จัดการข้อมูลผู้เอาประกัน"
+        actions={
+          <Can permission={P.CustomerWrite}>
+            <Button onClick={() => router.push('/customers/new')}>
+              <Plus /> เพิ่มลูกค้า
+            </Button>
+          </Can>
+        }
+      />
 
       <DataTable<CustomerDto>
         rows={data?.items}
@@ -65,10 +65,7 @@ export default function CustomersPage() {
         totalCount={data?.totalCount ?? 0}
         onPageChange={setPage}
         search={searchInput}
-        onSearchChange={(v) => {
-          setSearchInput(v);
-          setPage(1);
-        }}
+        onSearchChange={onSearchChange}
         searchPlaceholder="ค้นหาชื่อ / เลขบัตร / อีเมล"
         emptyText="ยังไม่มีลูกค้า"
         columns={[
@@ -127,5 +124,13 @@ export default function CustomersPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function CustomersPage() {
+  return (
+    <Suspense fallback={null}>
+      <CustomersPageContent />
+    </Suspense>
   );
 }

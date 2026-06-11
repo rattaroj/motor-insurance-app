@@ -3,7 +3,7 @@
 import { use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Pencil, Phone, Mail, Car } from 'lucide-react';
+import { Pencil, Phone, Mail, Car, User } from 'lucide-react';
 import { useGetCustomerOverviewQuery } from '@/lib/api/insuranceApi';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Can } from '@/components/can';
+import { PageHeader } from '@/components/page-header';
 import { P } from '@/lib/auth/permissions';
 import { fmtBaht, fmtDate, fmtDateTime } from '@/lib/utils';
 
@@ -40,10 +41,11 @@ export default function CustomerOverviewPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{data.fullName}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+      <PageHeader
+        icon={User}
+        title={data.fullName}
+        description={
+          <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <span className="tabular-nums">เลขบัตร {data.nationalId}</span>
             {data.phone && (
               <span className="inline-flex items-center gap-1">
@@ -55,14 +57,16 @@ export default function CustomerOverviewPage({ params }: { params: Promise<{ id:
                 <Mail className="h-3.5 w-3.5" /> {data.email}
               </span>
             )}
-          </div>
-        </div>
-        <Can permission={P.CustomerWrite}>
-          <Button variant="outline" onClick={() => router.push(`/customers/${id}/edit`)}>
-            <Pencil /> แก้ไข
-          </Button>
-        </Can>
-      </div>
+          </span>
+        }
+        actions={
+          <Can permission={P.CustomerWrite}>
+            <Button variant="outline" onClick={() => router.push(`/customers/${id}/edit`)}>
+              <Pencil /> แก้ไข
+            </Button>
+          </Can>
+        }
+      />
 
       {/* Headline stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

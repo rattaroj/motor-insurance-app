@@ -24,6 +24,7 @@ import {
   type Powertrain,
 } from '@/lib/api/insuranceApi';
 import { MasterColumn, type MasterItem } from '@/components/master-column';
+import { PageHeader } from '@/components/page-header';
 
 export default function VehicleCatalogPage() {
   const [brandId, setBrandId] = useState<number | null>(null);
@@ -60,15 +61,11 @@ export default function VehicleCatalogPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Car className="h-5 w-5" />
-        </span>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">ข้อมูลหลักรถยนต์</h1>
-          <p className="text-sm text-muted-foreground">จัดการ ยี่ห้อ → รุ่น → รุ่นย่อย → ปี (เลือกเพื่อดูระดับถัดไป)</p>
-        </div>
-      </div>
+      <PageHeader
+        icon={Car}
+        title="ข้อมูลหลักรถยนต์"
+        description="จัดการ ยี่ห้อ → รุ่น → รุ่นย่อย → ปี (เลือกเพื่อดูระดับถัดไป)"
+      />
 
       <div className="grid gap-4 lg:grid-cols-4">
         <MasterColumn

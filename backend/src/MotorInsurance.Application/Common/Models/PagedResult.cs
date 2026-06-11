@@ -30,3 +30,10 @@ public record PolicyHistoryDto(
     decimal Premium,
     DateTime ValidFrom,
     DateTime ValidTo);
+
+public record ClaimHistoryDto(
+    string Status,
+    decimal ClaimedAmount,
+    decimal? ApprovedAmount,
+    DateTime ValidFrom,
+    DateTime ValidTo);

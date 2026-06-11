@@ -3,11 +3,12 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, UserPlus } from 'lucide-react';
 import { useCreateCustomerMutation } from '@/lib/api/insuranceApi';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CustomerForm, customerPayload, type CustomerFormValues } from '@/components/customer-form';
+import { PageHeader } from '@/components/page-header';
 import { apiError } from '@/lib/utils';
 
 export default function NewCustomerPage() {
@@ -32,8 +33,7 @@ export default function NewCustomerPage() {
             <ArrowLeft /> กลับไปหน้าลูกค้า
           </Link>
         </Button>
-        <h1 className="text-2xl font-semibold tracking-tight">เพิ่มลูกค้า</h1>
-        <p className="text-sm text-muted-foreground">กรอกข้อมูลผู้เอาประกันรายใหม่</p>
+        <PageHeader icon={UserPlus} title="เพิ่มลูกค้า" description="กรอกข้อมูลผู้เอาประกันรายใหม่" />
       </div>
 
       <Card>

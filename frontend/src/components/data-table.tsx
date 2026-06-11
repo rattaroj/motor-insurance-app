@@ -1,6 +1,6 @@
 'use client';
 
-import { Search } from 'lucide-react';
+import { Search, Inbox, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -73,10 +73,10 @@ export function DataTable<T>({
         </div>
       )}
 
-      <Card>
+      <Card className="overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
               {columns.map((c, i) => (
                 <TableHead key={i} className={c.className}>
                   {c.header}
@@ -106,9 +106,14 @@ export function DataTable<T>({
                 </TableRow>
               ))}
             {isEmpty && (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-center text-muted-foreground">
-                  {emptyText}
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={columns.length}>
+                  <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                      <Inbox className="h-6 w-6 text-muted-foreground/60" />
+                    </span>
+                    <span className="text-sm">{emptyText}</span>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
@@ -116,19 +121,75 @@ export function DataTable<T>({
         </Table>
       </Card>
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>
-          ทั้งหมด {totalCount} รายการ — หน้า {Math.min(page, totalPages)}/{totalPages}
-        </span>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-            ก่อนหน้า
-          </Button>
-          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
-            ถัดไป
-          </Button>
-        </div>
+      <TablePagination page={page} totalPages={totalPages} totalCount={totalCount} onPageChange={onPageChange} />
+    </div>
+  );
+}
+
+/** Numbered pagination footer shared by DataTable and hand-rolled tables. */
+export function TablePagination({
+  page,
+  totalPages,
+  totalCount,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  totalCount: number;
+  onPageChange: (page: number) => void;
+}) {
+  const current = Math.min(page, totalPages);
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+      <span>ทั้งหมด {totalCount} รายการ</span>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          aria-label="หน้าก่อนหน้า"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          <ChevronLeft />
+        </Button>
+        {pageItems(current, totalPages).map((item, i) =>
+          item === '…' ? (
+            <span key={`gap-${i}`} className="px-1.5 text-muted-foreground/60">
+              …
+            </span>
+          ) : (
+            <Button
+              key={item}
+              variant={item === current ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 w-8 p-0 tabular-nums"
+              aria-current={item === current ? 'page' : undefined}
+              onClick={() => onPageChange(item)}
+            >
+              {item}
+            </Button>
+          ),
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          aria-label="หน้าถัดไป"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+        >
+          <ChevronRight />
+        </Button>
       </div>
     </div>
   );
+}
+
+/** Page numbers around the current page, with ellipsis gaps (e.g. 1 … 4 5 6 … 20). */
+function pageItems(current: number, total: number): (number | '…')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  if (current <= 4) return [1, 2, 3, 4, 5, '…', total];
+  if (current >= total - 3) return [1, '…', total - 4, total - 3, total - 2, total - 1, total];
+  return [1, '…', current - 1, current, current + 1, '…', total];
 }

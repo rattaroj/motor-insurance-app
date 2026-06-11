@@ -32,7 +32,7 @@ export function ClaimsAgingPanel() {
           <AlarmClock className="h-4 w-4 text-amber-600" />
           เคลมที่ต้องติดตาม (SLA)
           {breachedCount > 0 && (
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+            <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">
               เกินกำหนด {breachedCount}
             </span>
           )}
@@ -53,7 +53,7 @@ export function ClaimsAgingPanel() {
                   key={r.id}
                   className={cn(
                     'flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-sm',
-                    r.breached ? 'border-red-200 bg-red-50' : 'bg-muted/30',
+                    r.breached ? 'border-red-500/30 bg-red-500/10' : 'bg-muted/30',
                   )}
                 >
                   <span className="font-medium">{r.claimNo}</span>
@@ -64,7 +64,7 @@ export function ClaimsAgingPanel() {
                   <span
                     className={cn(
                       'inline-block rounded-full px-2 py-0.5 text-xs font-medium tabular-nums',
-                      r.breached ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700',
+                      r.breached ? 'bg-red-500/15 text-red-700 dark:text-red-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
                     )}
                     title={`SLA ${r.slaDays} วัน`}
                   >

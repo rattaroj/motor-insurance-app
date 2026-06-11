@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { RefreshCw, BellRing, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, BellRing, CheckCircle2, CalendarClock } from 'lucide-react';
 import {
   useGetExpiringPoliciesQuery,
   useRenewPolicyMutation,
@@ -25,6 +25,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Can } from '@/components/can';
 import { ExportButton } from '@/components/export-button';
+import { PageHeader } from '@/components/page-header';
 import { P } from '@/lib/auth/permissions';
 import { apiError, cn, fmtDate, fmtDateTime } from '@/lib/utils';
 
@@ -98,15 +99,14 @@ export default function RenewalsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">ต่ออายุเชิงรุก</h1>
-          <p className="text-sm text-muted-foreground">
-            กรมธรรม์ที่ใกล้หมดอายุภายใน {WINDOW_DAYS} วัน และยังไม่ได้ต่ออายุ
-          </p>
-        </div>
-        <ExportButton filename="renewals-expiring.csv" fetchUrl={() => exportExpiring({ days: WINDOW_DAYS }).unwrap()} />
-      </div>
+      <PageHeader
+        icon={CalendarClock}
+        title="ต่ออายุเชิงรุก"
+        description={<>กรมธรรม์ที่ใกล้หมดอายุภายใน {WINDOW_DAYS} วัน และยังไม่ได้ต่ออายุ</>}
+        actions={
+          <ExportButton filename="renewals-expiring.csv" fetchUrl={() => exportExpiring({ days: WINDOW_DAYS }).unwrap()} />
+        }
+      />
 
       {/* Bulk action bar — only when at least one row is selected. */}
       {selected.size > 0 && (
@@ -178,7 +178,7 @@ export default function RenewalsPage() {
                       <span
                         className={cn(
                           'inline-block rounded-full px-2 py-0.5 text-xs font-medium tabular-nums',
-                          r.daysLeft <= 14 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700',
+                          r.daysLeft <= 14 ? 'bg-red-500/15 text-red-700 dark:text-red-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
                         )}
                       >
                         {r.daysLeft}

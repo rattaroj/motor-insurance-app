@@ -4,12 +4,13 @@ import { use, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, UserCog } from 'lucide-react';
 import { useGetCustomerQuery, useUpdateCustomerMutation } from '@/lib/api/insuranceApi';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerForm, customerPayload, type CustomerFormValues } from '@/components/customer-form';
+import { PageHeader } from '@/components/page-header';
 import { apiError } from '@/lib/utils';
 
 export default function EditCustomerPage({ params }: { params: Promise<{ id: string }> }) {
@@ -63,12 +64,15 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
             <ArrowLeft /> กลับไปหน้าลูกค้า
           </Link>
         </Button>
-        <h1 className="text-2xl font-semibold tracking-tight">แก้ไขข้อมูลลูกค้า</h1>
-        {customer && (
-          <p className="text-sm text-muted-foreground">
-            เลขบัตร {customer.nationalId} — หากลูกค้ามีกรมธรรม์แล้ว ต้องแก้ไขผ่านการสลักหลังที่หน้ากรมธรรม์
-          </p>
-        )}
+        <PageHeader
+          icon={UserCog}
+          title="แก้ไขข้อมูลลูกค้า"
+          description={
+            customer && (
+              <>เลขบัตร {customer.nationalId} — หากลูกค้ามีกรมธรรม์แล้ว ต้องแก้ไขผ่านการสลักหลังที่หน้ากรมธรรม์</>
+            )
+          }
+        />
       </div>
 
       {isLoading ? (

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Trash2, Upload, Check, GitCompareArrows, Download } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Upload, Check, GitCompareArrows, Download, FileText } from 'lucide-react';
 import {
   useCreateQuotationMutation,
   usePreviewPremiumMutation,
@@ -20,6 +20,7 @@ import {
   type DriverInput,
 } from '@/lib/api/insuranceApi';
 import { ImagePreview } from '@/components/image-preview';
+import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -194,8 +195,7 @@ export default function NewQuotationPage() {
             <ArrowLeft /> กลับไปหน้าใบเสนอราคา
           </Link>
         </Button>
-        <h1 className="text-2xl font-semibold tracking-tight">สร้างใบเสนอราคา</h1>
-        <p className="text-sm text-muted-foreground">ระบบจะคำนวณเบี้ยให้อัตโนมัติตามชั้นความคุ้มครอง</p>
+        <PageHeader icon={FileText} title="สร้างใบเสนอราคา" description="ระบบจะคำนวณเบี้ยให้อัตโนมัติตามชั้นความคุ้มครอง" />
       </div>
 
       <Card>

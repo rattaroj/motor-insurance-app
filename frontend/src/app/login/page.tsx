@@ -46,11 +46,20 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4 py-8">
-            <Card className="w-full max-w-md">
+        <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-sidebar via-primary to-sky-500 px-4 py-8">
+            {/* decorative glows */}
+            <div aria-hidden className="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
+            <div aria-hidden className="absolute -bottom-32 -right-20 h-96 w-96 rounded-full bg-sky-300/20 blur-3xl" />
+
+            <div className="relative w-full max-w-md">
+                <div className="mb-6 text-center text-white">
+                    <p className="text-xl font-bold tracking-tight">Motor Insurance</p>
+                    <p className="text-sm text-white/70">quote → policy → claim → payment</p>
+                </div>
+            <Card className="w-full border-white/20 shadow-2xl">
                 <CardHeader className="space-y-2 text-center">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                        <ShieldCheck className="h-6 w-6 text-primary" />
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sidebar to-primary shadow-md">
+                        <ShieldCheck className="h-6 w-6 text-white" />
                     </div>
                     <CardTitle className="text-2xl">เข้าสู่ระบบ</CardTitle>
                     <CardDescription>ระบบจัดการประกันรถยนต์</CardDescription>
@@ -91,15 +100,15 @@ export default function LoginPage() {
 
                     <div className="mt-6 border-t pt-4">
                         <p className="mb-2 text-xs font-medium text-muted-foreground">บัญชีทดสอบ (คลิกเพื่อกรอกอัตโนมัติ)</p>
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                             {DEMO_ACCOUNTS.map((a) => (
                                 <button
                                     key={a.username}
                                     type="button"
                                     onClick={() => fillDemo(a.username, a.password)}
-                                    className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted"
+                                    className="flex w-full items-center justify-between rounded-lg border border-transparent px-2.5 py-1.5 text-left text-xs transition-colors hover:border-primary/20 hover:bg-accent"
                                 >
-                                    <span className="font-mono">{a.username}</span>
+                                    <span className="font-mono font-medium">{a.username}</span>
                                     <span className="text-muted-foreground">{a.label}</span>
                                 </button>
                             ))}
@@ -107,6 +116,7 @@ export default function LoginPage() {
                     </div>
                 </CardContent>
             </Card>
+            </div>
         </div>
     );
 }

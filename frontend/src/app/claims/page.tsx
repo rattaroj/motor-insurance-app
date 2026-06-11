@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
-import { Plus, ChevronRight, Check, X, Wrench, Image as ImageIcon } from 'lucide-react';
+import { Plus, ChevronRight, Check, X, Wrench, Image as ImageIcon, FileWarning } from 'lucide-react';
 import {
   useGetClaimsQuery,
   useFileClaimMutation,
@@ -33,9 +34,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Can } from '@/components/can';
 import { ClaimManageDialog } from '@/components/claim-manage-dialog';
 import { ClaimsAgingPanel } from '@/components/claims-aging-panel';
+import { PageHeader } from '@/components/page-header';
 import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDate } from '@/lib/utils';
-import { useDebouncedValue } from '@/lib/use-debounced';
+import { useListUrlState } from '@/lib/use-url-state';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -59,11 +61,9 @@ const CLAIM_STATUSES: { value: string; label: string }[] = [
 
 const PAGE_SIZE = 10;
 
-export default function ClaimsPage() {
-  const [page, setPage] = useState(1);
-  const [searchInput, setSearchInput] = useState('');
-  const search = useDebouncedValue(searchInput, 300);
-  const [statusFilter, setStatusFilter] = useState('all');
+function ClaimsPageContent() {
+  const { page, setPage, searchInput, onSearchChange, search, filters, setFilter } = useListUrlState(['status']);
+  const statusFilter = filters.status;
   const { data, isFetching } = useGetClaimsQuery({
     page,
     pageSize: PAGE_SIZE,
@@ -100,17 +100,18 @@ export default function ClaimsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">เคลม</h1>
-          <p className="text-sm text-muted-foreground">แจ้งเคลม → ตรวจสอบ → ประเมิน → อนุมัติ/ปฏิเสธ</p>
-        </div>
-        <Can permission={P.ClaimFile}>
-          <Button onClick={() => setFileOpen(true)}>
-            <Plus /> แจ้งเคลม
-          </Button>
-        </Can>
-      </div>
+      <PageHeader
+        icon={FileWarning}
+        title="เคลม"
+        description="แจ้งเคลม → ตรวจสอบ → ประเมิน → อนุมัติ/ปฏิเสธ"
+        actions={
+          <Can permission={P.ClaimFile}>
+            <Button onClick={() => setFileOpen(true)}>
+              <Plus /> แจ้งเคลม
+            </Button>
+          </Can>
+        }
+      />
 
       <ClaimsAgingPanel />
 
@@ -123,20 +124,14 @@ export default function ClaimsPage() {
         totalCount={data?.totalCount ?? 0}
         onPageChange={setPage}
         search={searchInput}
-        onSearchChange={(v) => {
-          setSearchInput(v);
-          setPage(1);
-        }}
+        onSearchChange={onSearchChange}
         searchPlaceholder="ค้นหาเลขเคลม / กรมธรรม์"
         emptyText="ยังไม่มีเคลม"
         toolbar={
           <>
             <Select
               value={statusFilter}
-              onValueChange={(v) => {
-                setStatusFilter(v);
-                setPage(1);
-              }}
+              onValueChange={(v) => setFilter('status', v)}
             >
               <SelectTrigger className="w-40">
                 <SelectValue />
@@ -161,7 +156,14 @@ export default function ClaimsPage() {
           </>
         }
         columns={[
-          { header: 'เลขที่', cell: (c) => <span className="font-medium">{c.claimNo}</span> },
+          {
+            header: 'เลขที่',
+            cell: (c) => (
+              <Link href={`/claims/${c.id}`} className="font-medium text-primary hover:underline">
+                {c.claimNo}
+              </Link>
+            ),
+          },
           { header: 'กรมธรรม์', cell: (c) => c.policyNo },
           { header: 'วันเกิดเหตุ', cell: (c) => fmtDate(c.incidentDate) },
           { header: 'สถานะ', cell: (c) => <StatusBadge status={c.status} /> },
@@ -376,5 +378,13 @@ export default function ClaimsPage() {
 
       <ClaimManageDialog claimId={manageId} onClose={() => setManageId(null)} />
     </div>
+  );
+}
+
+export default function ClaimsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ClaimsPageContent />
+    </Suspense>
   );
 }

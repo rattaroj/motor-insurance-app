@@ -42,6 +42,40 @@
     --sidebar-accent-foreground: 220.74 100% 31.76%;
     --sidebar-border: 220 60% 50%;
   }
+
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 96%;
+
+    --card: 222 44% 10%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 222 44% 10%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217 33% 16%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 217 33% 14%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 50% 17%;
+    --accent-foreground: 213 90% 80%;
+
+    --destructive: 0 63% 45%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 18%;
+    --input: 217 33% 22%;
+    --ring: 217 91% 60%;
+
+    /* Sidebar is already dark — deepen slightly so it still reads as chrome. */
+    --sidebar: 221 80% 24%;
+    --sidebar-border: 220 50% 38%;
+  }
 }
 
 @layer base {
@@ -51,4 +85,37 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+  ::selection {
+    background: hsl(var(--primary) / 0.2);
+  }
+}
+
+/* Thin, rounded scrollbars (WebKit/Chromium) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(215 16% 82%);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(215 16% 65%);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(217 20% 28%);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(217 20% 38%);
+}
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(215 16% 82%) transparent;
+}
+.dark * {
+  scrollbar-color: hsl(217 20% 28%) transparent;
 }

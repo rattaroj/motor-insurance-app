@@ -13,6 +13,7 @@ import {
   CalendarClock,
   BellOff,
   type LucideIcon,
+  LayoutDashboard,
 } from 'lucide-react';
 import {
   useGetDashboardSummaryQuery,
@@ -22,6 +23,7 @@ import {
 } from '@/lib/api/insuranceApi';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 import { P, usePermissions, requiredPermission } from '@/lib/auth/permissions';
 import { cn, fmtBaht } from '@/lib/utils';
 
@@ -78,10 +80,19 @@ function StatCard({
   loading?: boolean;
 }) {
   return (
-    <GuardedLink href={href}>
-      <Card className="transition-shadow hover:shadow-md">
+    <GuardedLink href={href} className="group block">
+      <Card className="relative overflow-hidden transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-primary/30 group-hover:shadow-lg">
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-sidebar to-primary opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+        />
         <CardContent className="flex items-center gap-4 p-5">
-          <div className={cn('flex h-12 w-12 items-center justify-center rounded-lg', accent)}>
+          <div
+            className={cn(
+              'flex h-12 w-12 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-110',
+              accent,
+            )}
+          >
             <Icon className="h-6 w-6" />
           </div>
           <div>
@@ -89,7 +100,7 @@ function StatCard({
             {loading ? (
               <Skeleton className="mt-1 h-8 w-16" />
             ) : (
-              <p className="text-2xl font-semibold tabular-nums">{value}</p>
+              <p className="text-2xl font-bold tabular-nums">{value}</p>
             )}
           </div>
         </CardContent>
@@ -115,14 +126,14 @@ function AlertCard({
   loading?: boolean;
 }) {
   const toneClass = {
-    red: 'border-red-200 bg-red-50 text-red-700',
-    amber: 'border-amber-200 bg-amber-50 text-amber-700',
-    slate: 'border-slate-200 bg-slate-50 text-slate-600',
+    red: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400',
+    amber: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    slate: 'border-slate-500/30 bg-slate-500/10 text-slate-600 dark:text-slate-400',
   }[count > 0 ? tone : 'slate'];
 
   return (
-    <GuardedLink href={href}>
-      <Card className={cn('border transition-shadow hover:shadow-md', toneClass)}>
+    <GuardedLink href={href} className="group block">
+      <Card className={cn('border transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md', toneClass)}>
         <CardContent className="flex items-center gap-3 p-4">
           <Icon className="h-5 w-5 shrink-0" />
           <div className="min-w-0">
@@ -165,18 +176,15 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">แดชบอร์ด</h1>
-        <p className="text-sm text-muted-foreground">ภาพรวมระบบประกันรถยนต์</p>
-      </div>
+      <PageHeader icon={LayoutDashboard} title="แดชบอร์ด" description="ภาพรวมระบบประกันรถยนต์" />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard href="/customers" label="ลูกค้า" value={show(data?.customers)} icon={Users} accent="bg-blue-100 text-blue-700" loading={isLoading} />
-        <StatCard href="/vehicles" label="รถยนต์" value={show(data?.vehicles)} icon={Car} accent="bg-sky-100 text-sky-700" loading={isLoading} />
-        <StatCard href="/quotations" label="ใบเสนอราคา" value={show(data?.quotations)} icon={FileText} accent="bg-indigo-100 text-indigo-700" loading={isLoading} />
-        <StatCard href="/policies" label="กรมธรรม์ทั้งหมด" value={show(data?.policiesTotal)} icon={ShieldCheck} accent="bg-blue-100 text-blue-700" loading={isLoading} />
-        <StatCard href="/policies" label="คุ้มครองอยู่" value={show(data?.policiesActive)} icon={ShieldCheck} accent="bg-emerald-100 text-emerald-700" loading={isLoading} />
-        <StatCard href="/claims" label="เคลมที่ยังไม่ปิด" value={show(data?.claimsOpen)} icon={FileWarning} accent="bg-amber-100 text-amber-700" loading={isLoading} />
+        <StatCard href="/customers" label="ลูกค้า" value={show(data?.customers)} icon={Users} accent="bg-blue-500/10 text-blue-700 dark:text-blue-400" loading={isLoading} />
+        <StatCard href="/vehicles" label="รถยนต์" value={show(data?.vehicles)} icon={Car} accent="bg-sky-500/10 text-sky-700 dark:text-sky-400" loading={isLoading} />
+        <StatCard href="/quotations" label="ใบเสนอราคา" value={show(data?.quotations)} icon={FileText} accent="bg-indigo-500/10 text-indigo-700 dark:text-indigo-400" loading={isLoading} />
+        <StatCard href="/policies" label="กรมธรรม์ทั้งหมด" value={show(data?.policiesTotal)} icon={ShieldCheck} accent="bg-blue-500/10 text-blue-700 dark:text-blue-400" loading={isLoading} />
+        <StatCard href="/policies" label="คุ้มครองอยู่" value={show(data?.policiesActive)} icon={ShieldCheck} accent="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" loading={isLoading} />
+        <StatCard href="/claims" label="เคลมที่ยังไม่ปิด" value={show(data?.claimsOpen)} icon={FileWarning} accent="bg-amber-500/10 text-amber-700 dark:text-amber-400" loading={isLoading} />
       </div>
 
       {showAlerts && (
@@ -220,7 +228,7 @@ export default function DashboardPage() {
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400">
               <CreditCard className="h-6 w-6" />
             </div>
             <div>

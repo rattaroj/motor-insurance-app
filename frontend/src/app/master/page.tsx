@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { Car, UserSquare2, ShieldPlus, Wrench, SlidersHorizontal, ChevronRight, type LucideIcon } from 'lucide-react';
+import { Car, UserSquare2, ShieldPlus, Wrench, SlidersHorizontal, ChevronRight, Database, type LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { PageHeader } from '@/components/page-header';
 
 type Section = {
   href: string;
@@ -47,10 +48,7 @@ const sections: Section[] = [
 export default function MasterDataPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">ข้อมูลหลัก</h1>
-        <p className="text-sm text-muted-foreground">เลือกหมวดข้อมูลที่ต้องการจัดการ</p>
-      </div>
+      <PageHeader icon={Database} title="ข้อมูลหลัก" description="เลือกหมวดข้อมูลที่ต้องการจัดการ" />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {sections.map(({ href, title, description, icon: Icon }) => (

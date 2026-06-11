@@ -1,37 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { Plus, Car } from 'lucide-react';
 import { useGetVehiclesQuery, POWERTRAIN_LABELS, type VehicleDto } from '@/lib/api/insuranceApi';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/data-table';
 import { Can } from '@/components/can';
+import { PageHeader } from '@/components/page-header';
 import { P } from '@/lib/auth/permissions';
-import { useDebouncedValue } from '@/lib/use-debounced';
+import { useListUrlState } from '@/lib/use-url-state';
 
 const PAGE_SIZE = 10;
 
-export default function VehiclesPage() {
+function VehiclesPageContent() {
   const router = useRouter();
-  const [page, setPage] = useState(1);
-  const [searchInput, setSearchInput] = useState('');
-  const search = useDebouncedValue(searchInput, 300);
+  const { page, setPage, searchInput, onSearchChange, search } = useListUrlState();
   const { data, isFetching } = useGetVehiclesQuery({ page, pageSize: PAGE_SIZE, search });
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">รถยนต์</h1>
-          <p className="text-sm text-muted-foreground">ทะเบียนรถที่เอาประกัน</p>
-        </div>
-        <Can permission={P.VehicleWrite}>
-          <Button onClick={() => router.push('/vehicles/new')}>
-            <Plus /> เพิ่มรถยนต์
-          </Button>
-        </Can>
-      </div>
+      <PageHeader
+        icon={Car}
+        title="รถยนต์"
+        description="ทะเบียนรถที่เอาประกัน"
+        actions={
+          <Can permission={P.VehicleWrite}>
+            <Button onClick={() => router.push('/vehicles/new')}>
+              <Plus /> เพิ่มรถยนต์
+            </Button>
+          </Can>
+        }
+      />
 
       <DataTable<VehicleDto>
         rows={data?.items}
@@ -42,10 +42,7 @@ export default function VehiclesPage() {
         totalCount={data?.totalCount ?? 0}
         onPageChange={setPage}
         search={searchInput}
-        onSearchChange={(v) => {
-          setSearchInput(v);
-          setPage(1);
-        }}
+        onSearchChange={onSearchChange}
         searchPlaceholder="ค้นหาทะเบียน / ยี่ห้อ / เจ้าของ"
         emptyText="ยังไม่มีรถยนต์"
         columns={[
@@ -60,5 +57,13 @@ export default function VehiclesPage() {
         ]}
       />
     </div>
+  );
+}
+
+export default function VehiclesPage() {
+  return (
+    <Suspense fallback={null}>
+      <VehiclesPageContent />
+    </Suspense>
   );
 }

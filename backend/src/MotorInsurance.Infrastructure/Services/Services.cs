@@ -165,6 +165,37 @@ public class PolicyHistoryReader : IPolicyHistoryReader
     }
 }
 
+/// <summary>Reads temporal claim history via the SQL Server TemporalAll() API.</summary>
+public class ClaimHistoryReader : IClaimHistoryReader
+{
+    private readonly AppDbContext _db;
+    public ClaimHistoryReader(AppDbContext db) => _db = db;
+
+    public async Task<IReadOnlyList<ClaimHistoryDto>> GetHistoryAsync(long claimId, CancellationToken ct = default)
+    {
+        // Project the period columns in SQL, but map Status (a converted enum) in
+        // memory so EF doesn't have to translate enum.ToString().
+        var rows = await _db.Claims
+            .TemporalAll()
+            .AsNoTracking()
+            .Where(c => c.Id == claimId)
+            .OrderBy(c => EF.Property<DateTime>(c, "ValidFrom"))
+            .Select(c => new
+            {
+                c.Status,
+                c.ClaimedAmount,
+                c.ApprovedAmount,
+                ValidFrom = EF.Property<DateTime>(c, "ValidFrom"),
+                ValidTo = EF.Property<DateTime>(c, "ValidTo"),
+            })
+            .ToListAsync(ct);
+
+        return rows
+            .Select(r => new ClaimHistoryDto(r.Status.ToString(), r.ClaimedAmount, r.ApprovedAmount, r.ValidFrom, r.ValidTo))
+            .ToList();
+    }
+}
+
 /// <summary>
 /// Reads claim aging via TemporalAll(): for each open claim, finds when it entered its current
 /// status (the start of the contiguous tail of history rows sharing that status).
@@ -373,6 +404,7 @@ public static class DependencyInjection
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IDocumentNumberGenerator, DocumentNumberGenerator>();
         services.AddScoped<IPolicyHistoryReader, PolicyHistoryReader>();
+        services.AddScoped<IClaimHistoryReader, ClaimHistoryReader>();
         services.AddScoped<IClaimAgingReader, ClaimAgingReader>();
 
         // Notification delivery: pick the sender from configuration (default = log). The DI seam

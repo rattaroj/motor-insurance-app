@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { toast } from 'sonner';
-import { Wallet, Receipt } from 'lucide-react';
+import { Wallet, Receipt, CreditCard } from 'lucide-react';
 import {
   useGetPaymentsQuery,
   useSettlePaymentMutation,
@@ -27,9 +27,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Can } from '@/components/can';
 import { PromptPayButton } from '@/components/promptpay-button';
+import { PageHeader } from '@/components/page-header';
 import { P } from '@/lib/auth/permissions';
 import { apiError, fmtBaht, fmtDate, fmtDateTime, saveUrl } from '@/lib/utils';
-import { useDebouncedValue } from '@/lib/use-debounced';
+import { useListUrlState } from '@/lib/use-url-state';
 
 const PAGE_SIZE = 10;
 
@@ -47,12 +48,13 @@ const DIRECTIONS: { value: string; label: string }[] = [
   { value: 'Outbound', label: 'จ่ายสินไหม' },
 ];
 
-export default function PaymentsPage() {
-  const [page, setPage] = useState(1);
-  const [searchInput, setSearchInput] = useState('');
-  const search = useDebouncedValue(searchInput, 300);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [directionFilter, setDirectionFilter] = useState('all');
+function PaymentsPageContent() {
+  const { page, setPage, searchInput, onSearchChange, search, filters, setFilter } = useListUrlState([
+    'status',
+    'direction',
+  ]);
+  const statusFilter = filters.status;
+  const directionFilter = filters.direction;
   const { data, isFetching } = useGetPaymentsQuery({
     page,
     pageSize: PAGE_SIZE,
@@ -89,10 +91,7 @@ export default function PaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">การชำระเงิน</h1>
-        <p className="text-sm text-muted-foreground">เบี้ยรับเข้า และสินไหมจ่ายออก</p>
-      </div>
+      <PageHeader icon={CreditCard} title="การชำระเงิน" description="เบี้ยรับเข้า และสินไหมจ่ายออก" />
 
       <DataTable<PaymentDto>
         rows={data?.items}
@@ -103,20 +102,14 @@ export default function PaymentsPage() {
         totalCount={data?.totalCount ?? 0}
         onPageChange={setPage}
         search={searchInput}
-        onSearchChange={(v) => {
-          setSearchInput(v);
-          setPage(1);
-        }}
+        onSearchChange={onSearchChange}
         searchPlaceholder="ค้นหาเลขที่ / อ้างอิง"
         emptyText="ไม่มีรายการชำระเงิน"
         toolbar={
           <>
             <Select
               value={statusFilter}
-              onValueChange={(v) => {
-                setStatusFilter(v);
-                setPage(1);
-              }}
+              onValueChange={(v) => setFilter('status', v)}
             >
               <SelectTrigger className="w-36">
                 <SelectValue />
@@ -131,10 +124,7 @@ export default function PaymentsPage() {
             </Select>
             <Select
               value={directionFilter}
-              onValueChange={(v) => {
-                setDirectionFilter(v);
-                setPage(1);
-              }}
+              onValueChange={(v) => setFilter('direction', v)}
             >
               <SelectTrigger className="w-36">
                 <SelectValue />
@@ -235,5 +225,13 @@ export default function PaymentsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function PaymentsPage() {
+  return (
+    <Suspense fallback={null}>
+      <PaymentsPageContent />
+    </Suspense>
   );
 }

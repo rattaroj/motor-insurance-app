@@ -71,12 +71,14 @@ export function SidebarNav({ collapsed = false, onNavigate }: { collapsed?: bool
   return (
     <div
       className={cn(
-        'flex h-full flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200',
+        'flex h-full flex-col bg-gradient-to-b from-sidebar to-[#021c57] text-sidebar-foreground transition-[width] duration-200',
         collapsed ? 'w-16' : 'w-64',
       )}
     >
-      <div className={cn('flex items-center gap-2 py-5', collapsed ? 'justify-center px-0' : 'px-6')}>
-        <ShieldCheck className="h-6 w-6 shrink-0 text-sidebar-accent" />
+      <div className={cn('flex items-center gap-3 py-5', collapsed ? 'justify-center px-0' : 'px-5')}>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/20">
+          <ShieldCheck className="h-5 w-5 text-sidebar-accent" />
+        </span>
         {!collapsed && (
           <div className="leading-tight">
             <p className="text-sm font-semibold">Motor Insurance</p>
@@ -136,10 +138,13 @@ function NavLink({
         'group relative flex items-center rounded-lg text-sm font-medium transition-colors',
         collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
         active
-          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+          ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-md'
           : 'text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground',
       )}
     >
+      {active && !collapsed && (
+        <span aria-hidden className="absolute -left-3 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-white" />
+      )}
       <Icon className="h-4 w-4 shrink-0" />
       {!collapsed && <span className="truncate">{label}</span>}
       {collapsed && (
@@ -196,7 +201,7 @@ function NavGroup({
                 className={cn(
                   'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
                   active
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-md'
                     : 'text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground',
                 )}
               >

@@ -6,6 +6,8 @@ import { Menu } from 'lucide-react';
 import { SidebarNav } from '@/components/app-sidebar';
 import { UserMenu } from '@/components/user-menu';
 import { GlobalSearch } from '@/components/global-search';
+import { Breadcrumbs } from '@/components/breadcrumbs';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { cn } from '@/lib/utils';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -63,9 +65,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <span className="hidden font-semibold md:inline">ระบบประกันรถยนต์</span>
+          <Breadcrumbs />
           <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
             <GlobalSearch />
+            <ThemeToggle />
             <UserMenu />
           </div>
         </header>

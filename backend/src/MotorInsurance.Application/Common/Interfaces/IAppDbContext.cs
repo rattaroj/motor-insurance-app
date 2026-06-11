@@ -106,6 +106,12 @@ public interface IPolicyHistoryReader
     Task<IReadOnlyList<PolicyHistoryDto>> GetHistoryAsync(long policyId, CancellationToken ct = default);
 }
 
+/// <summary>Reads system-versioned (temporal) claim history — same Infrastructure seam as IPolicyHistoryReader.</summary>
+public interface IClaimHistoryReader
+{
+    Task<IReadOnlyList<ClaimHistoryDto>> GetHistoryAsync(long claimId, CancellationToken ct = default);
+}
+
 /// <summary>An open claim with the time it entered its current status (from the temporal history).</summary>
 public record ClaimAgingRow(
     long Id, string ClaimNo, string PolicyNo, ClaimStatus Status, decimal ClaimedAmount, DateTime StatusSince);
