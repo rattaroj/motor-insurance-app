@@ -84,34 +84,32 @@ export default function ReportsPage() {
         title="รายงานและวิเคราะห์"
         description="ภาพรวมเบี้ยรับ ค่าสินไหม และพอร์ตกรมธรรม์"
         actions={
-          <>
-            <div className="flex items-end gap-2">
-              <div className="space-y-1">
-                <Label htmlFor="from" className="text-xs text-muted-foreground">ตั้งแต่</Label>
-                <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 w-40" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="to" className="text-xs text-muted-foreground">ถึง</Label>
-                <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 w-40" />
-              </div>
-              {(from || to) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFrom('');
-                    setTo('');
-                  }}
-                  className="h-9 px-2 text-sm text-muted-foreground hover:text-foreground"
-                >
-                  ล้าง
-                </button>
-              )}
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="from" className="text-xs text-muted-foreground">ตั้งแต่</Label>
+              <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 w-40" />
             </div>
+            <div className="space-y-1">
+              <Label htmlFor="to" className="text-xs text-muted-foreground">ถึง</Label>
+              <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 w-40" />
+            </div>
+            {(from || to) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFrom('');
+                  setTo('');
+                }}
+                className="h-9 px-2 text-sm text-muted-foreground hover:text-foreground"
+              >
+                ล้าง
+              </button>
+            )}
             <ExportButton
               filename="analytics.csv"
               fetchUrl={() => exportAnalytics({ from: from || undefined, to: to || undefined }).unwrap()}
             />
-          </>
+          </div>
         }
       />
 
