@@ -5,7 +5,6 @@ using MotorInsurance.Application.Common.Exceptions;
 using MotorInsurance.Application.Common.Interfaces;
 using MotorInsurance.Domain.Entities;
 using MotorInsurance.Domain.Enums;
-using QRCoder;
 using Perms = MotorInsurance.Application.Common.Authorization.Permissions;
 
 namespace MotorInsurance.Api.Endpoints.Payments;
@@ -17,8 +16,8 @@ namespace MotorInsurance.Api.Endpoints.Payments;
 public class GetPromptPayQrEndpoint : EndpointWithoutRequest
 {
     private readonly IAppDbContext _db;
-    private readonly IConfiguration _config;
-    public GetPromptPayQrEndpoint(IAppDbContext db, IConfiguration config) => (_db, _config) = (db, config);
+    private readonly IPromptPayQrGenerator _qr;
+    public GetPromptPayQrEndpoint(IAppDbContext db, IPromptPayQrGenerator qr) => (_db, _qr) = (db, qr);
 
     public override void Configure()
     {
@@ -38,14 +37,7 @@ public class GetPromptPayQrEndpoint : EndpointWithoutRequest
         if (payment.Direction != PaymentDirection.Inbound || payment.Status != PaymentStatus.Pending)
             throw new ConflictException("QR พร้อมเพย์ใช้ได้เฉพาะรายการรับเบี้ยที่รอชำระเท่านั้น");
 
-        // Payee PromptPay target (mobile or tax id) — configurable; demo default otherwise.
-        var target = _config["PromptPay:Target"] ?? "0812345678";
-        var payload = PromptPayPayload.Build(target, payment.Amount);
-
-        using var generator = new QRCodeGenerator();
-        using var data = generator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.M);
-        var png = new PngByteQRCode(data).GetGraphic(10);
-
+        var png = _qr.CreatePng(payment.Amount);
         await Send.BytesAsync(png, $"promptpay-{payment.PaymentNo}.png", contentType: "image/png", cancellation: ct);
     }
 }

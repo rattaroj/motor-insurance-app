@@ -68,7 +68,7 @@ public interface IDateTimeProvider
 /// </summary>
 public record NotificationMessage(
     string Channel, string Recipient, string Subject, string Body,
-    byte[]? AttachmentBytes = null, string? AttachmentName = null);
+    byte[]? AttachmentBytes = null, string? AttachmentName = null, string? AttachmentContentType = null);
 
 /// <summary>
 /// Delivers a notification. The default dev implementation logs it (delivery is recorded in the
@@ -77,6 +77,17 @@ public record NotificationMessage(
 public interface INotificationSender
 {
     Task<bool> SendAsync(NotificationMessage message, CancellationToken ct = default);
+}
+
+/// <summary>
+/// Builds a Thai PromptPay QR (dynamic, amount-specific) for a payment so reminders can let the
+/// customer scan-to-pay. The payee target is configured once (PromptPay:Target); the EMVCo payload
+/// + PNG rendering live in Infrastructure (QRCoder).
+/// </summary>
+public interface IPromptPayQrGenerator
+{
+    /// <summary>PNG bytes of a PromptPay QR encoding the configured payee and <paramref name="amount"/>.</summary>
+    byte[] CreatePng(decimal amount);
 }
 
 /// <summary>Generates business document numbers (POL-2026-000001 etc.).</summary>

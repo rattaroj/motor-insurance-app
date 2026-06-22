@@ -151,6 +151,62 @@ public class InstallmentRemindersTests
     }
 
     [Fact]
+    public async Task Attaches_a_promptpay_qr_for_email_reminders()
+    {
+        await using var db = SeedPolicyWithInstallment(Today.AddDays(3));   // customer has an email
+        var sender = new FakeNotificationSender(result: true);
+        var qr = new FakePromptPayQr();
+
+        var n = await InstallmentReminders.SendDueRemindersAsync(
+            db, sender, new FixedClockProvider(), Offsets, Today, default, qr);
+
+        Assert.Equal(1, n);
+        var msg = Assert.Single(sender.Sent);
+        Assert.Equal("Email", msg.Channel);
+        Assert.Equal("image/png", msg.AttachmentContentType);
+        Assert.NotNull(msg.AttachmentBytes);
+        Assert.Contains("พร้อมเพย์", msg.Body);
+        Assert.Equal(3_000m, Assert.Single(qr.Amounts));   // QR encodes the installment amount
+    }
+
+    [Fact]
+    public async Task Does_not_attach_a_qr_for_non_email_channels()
+    {
+        await using var db = InMemoryAppDb.New();
+        // Customer with a LINE id but no email → routed to LINE, which carries no attachment.
+        db.Customers.Add(new Customer
+        {
+            Id = 1, NationalId = "1100000000001", FirstName = "สมหญิง", LastName = "ใจดี",
+            FullName = "สมหญิง ใจดี", LineUserId = "U123",
+        });
+        db.Policies.Add(new Policy
+        {
+            Id = 1, PolicyNo = "POL-2026-000001", CustomerId = 1, VehicleId = 1, Status = PolicyStatus.Active,
+        });
+        db.InstallmentPlans.Add(new InstallmentPlan { Id = 1, PolicyId = 1, Status = InstallmentPlanStatus.Active });
+        db.Payments.Add(new Payment
+        {
+            Id = 1, PaymentNo = "PAY-2026-000001", Direction = PaymentDirection.Inbound,
+            Status = PaymentStatus.Pending, PolicyId = 1, Amount = 3_000m,
+            InstallmentPlanId = 1, InstallmentSeq = 2, DueDate = Today.AddDays(3),
+        });
+        db.SaveChanges();
+
+        var sender = new FakeNotificationSender(result: true);
+        var qr = new FakePromptPayQr();
+
+        var n = await InstallmentReminders.SendDueRemindersAsync(
+            db, sender, new FixedClockProvider(), Offsets, Today, default, qr);
+
+        Assert.Equal(1, n);
+        var msg = Assert.Single(sender.Sent);
+        Assert.Equal("Line", msg.Channel);
+        Assert.Null(msg.AttachmentBytes);
+        Assert.Empty(qr.Amounts);                       // generator never invoked off-email
+        Assert.DoesNotContain("พร้อมเพย์", msg.Body);
+    }
+
+    [Fact]
     public async Task Records_failed_when_delivery_fails()
     {
         await using var db = SeedPolicyWithInstallment(Today.AddDays(1));

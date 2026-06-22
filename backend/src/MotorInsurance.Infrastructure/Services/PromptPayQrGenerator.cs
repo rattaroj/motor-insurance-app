@@ -1,7 +1,30 @@
 using System.Globalization;
 using System.Text;
+using Microsoft.Extensions.Configuration;
+using MotorInsurance.Application.Common.Interfaces;
+using QRCoder;
 
-namespace MotorInsurance.Api.Endpoints.Payments;
+namespace MotorInsurance.Infrastructure.Services;
+
+/// <summary>
+/// Renders a Thai PromptPay QR PNG for a payment amount. The payee target (mobile/tax id) is read
+/// once from configuration (PromptPay:Target, demo default otherwise). Implements the Application
+/// seam so reminder helpers can attach a scan-to-pay QR without depending on QRCoder.
+/// </summary>
+public class PromptPayQrGenerator : IPromptPayQrGenerator
+{
+    private readonly string _target;
+    public PromptPayQrGenerator(IConfiguration config)
+        => _target = config["PromptPay:Target"] ?? "0812345678";
+
+    public byte[] CreatePng(decimal amount)
+    {
+        var payload = PromptPayPayload.Build(_target, amount);
+        using var generator = new QRCodeGenerator();
+        using var data = generator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.M);
+        return new PngByteQRCode(data).GetGraphic(10);
+    }
+}
 
 /// <summary>
 /// Builds a Thai PromptPay EMVCo QR payload (dynamic, amount-specific) per the BOT spec.

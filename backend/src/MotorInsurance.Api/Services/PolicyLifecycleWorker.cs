@@ -89,7 +89,11 @@ public class PolicyLifecycleWorker : BackgroundService
         var today = DateOnly.FromDateTime(clock.UtcNow.Date);
 
         if (_opt.AutoExpire) await ExpireAsync(db, today, ct);
-        if (_opt.AutoRemindInstallments) await RemindInstallmentsAsync(db, sender, clock, today, ct);
+        if (_opt.AutoRemindInstallments)
+        {
+            var qr = scope.ServiceProvider.GetRequiredService<IPromptPayQrGenerator>();
+            await RemindInstallmentsAsync(db, sender, clock, today, qr, ct);
+        }
         if (_opt.AutoSuspendOverdue) await SuspendOverdueAsync(db, sender, clock, today, ct);
         if (_opt.AutoRemind) await RemindAsync(db, sender, clock, today, ct);
         if (_opt.AutoEscalateClaims)
@@ -116,10 +120,11 @@ public class PolicyLifecycleWorker : BackgroundService
     /// <see cref="SuspendOverdueAsync"/> only handles after the fact. Idempotent via the reminder subject.
     /// </summary>
     private async Task RemindInstallmentsAsync(
-        IAppDbContext db, INotificationSender sender, IDateTimeProvider clock, DateOnly today, CancellationToken ct)
+        IAppDbContext db, INotificationSender sender, IDateTimeProvider clock, DateOnly today,
+        IPromptPayQrGenerator qr, CancellationToken ct)
     {
         var n = await InstallmentReminders.SendDueRemindersAsync(
-            db, sender, clock, _opt.InstallmentReminderDays, today, ct);
+            db, sender, clock, _opt.InstallmentReminderDays, today, ct, qr);
         if (n > 0) _log.LogInformation("Auto-sent {Count} installment-due reminder(s).", n);
     }
 

@@ -20,7 +20,8 @@ public static class InstallmentReminders
     public static async Task<Notification> SendAsync(
         IAppDbContext db, INotificationSender sender, IDateTimeProvider clock,
         long policyId, string policyNo, string customerName, string? email, string? phone,
-        int installmentSeq, decimal amount, DateOnly? dueDate, CancellationToken ct, string? lineUserId = null)
+        int installmentSeq, decimal amount, DateOnly? dueDate, CancellationToken ct, string? lineUserId = null,
+        IPromptPayQrGenerator? qr = null)
     {
         var (channel, recipient) = RenewalReminders.PickChannel(email, phone, lineUserId);
 
@@ -41,7 +42,10 @@ public static class InstallmentReminders
             "จำนวน {{amount}} บาท ครบกำหนดชำระเมื่อวันที่ {{dueDate}} และยังไม่ได้รับชำระ\n" +
             "กรุณาชำระโดยเร็วเพื่อรักษาความคุ้มครองของกรมธรรม์", ct);
 
-        var ok = await sender.SendAsync(new NotificationMessage(channel, recipient, subject, body), ct);
+        var att = PromptPayReminderAttachment.For(qr, channel, policyNo, amount);
+        body += att.BodyLine;
+        var ok = await sender.SendAsync(
+            new NotificationMessage(channel, recipient, subject, body, att.Bytes, att.Name, att.ContentType), ct);
 
         var note = new Notification
         {

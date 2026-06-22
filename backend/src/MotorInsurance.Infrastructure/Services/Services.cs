@@ -319,7 +319,8 @@ public class SmtpNotificationSender : INotificationSender
             };
             if (m.AttachmentBytes is { Length: > 0 })
                 msg.Attachments.Add(new Attachment(
-                    new MemoryStream(m.AttachmentBytes), m.AttachmentName ?? "document.pdf", "application/pdf"));
+                    new MemoryStream(m.AttachmentBytes), m.AttachmentName ?? "document.pdf",
+                    m.AttachmentContentType ?? "application/pdf"));
 
             using var client = new SmtpClient(_s.Host, _s.Port) { EnableSsl = _s.UseSsl };
             if (!string.IsNullOrEmpty(_s.User))
@@ -406,6 +407,7 @@ public static class DependencyInjection
         services.AddScoped<IPolicyHistoryReader, PolicyHistoryReader>();
         services.AddScoped<IClaimHistoryReader, ClaimHistoryReader>();
         services.AddScoped<IClaimAgingReader, ClaimAgingReader>();
+        services.AddSingleton<IPromptPayQrGenerator, Services.PromptPayQrGenerator>();
 
         // Notification delivery: pick the sender from configuration (default = log). The DI seam
         // means call sites never change when switching channels (CLAUDE.md / README note).

@@ -99,3 +99,15 @@ public sealed class FakeNotificationSender : INotificationSender
         return Task.FromResult(_result);
     }
 }
+
+/// <summary>Returns fixed PNG bytes and records the amounts it was asked to encode.</summary>
+public sealed class FakePromptPayQr : IPromptPayQrGenerator
+{
+    public List<decimal> Amounts { get; } = new();
+
+    public byte[] CreatePng(decimal amount)
+    {
+        Amounts.Add(amount);
+        return new byte[] { 0x89, 0x50, 0x4E, 0x47 };   // "‰PNG" magic, enough to look like an image
+    }
+}

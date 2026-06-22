@@ -21,8 +21,10 @@ public class SendInstallmentReminderEndpoint : EndpointWithoutRequest<Installmen
     private readonly IAppDbContext _db;
     private readonly INotificationSender _sender;
     private readonly IDateTimeProvider _clock;
-    public SendInstallmentReminderEndpoint(IAppDbContext db, INotificationSender sender, IDateTimeProvider clock)
-        => (_db, _sender, _clock) = (db, sender, clock);
+    private readonly IPromptPayQrGenerator _qr;
+    public SendInstallmentReminderEndpoint(
+        IAppDbContext db, INotificationSender sender, IDateTimeProvider clock, IPromptPayQrGenerator qr)
+        => (_db, _sender, _clock, _qr) = (db, sender, clock, qr);
 
     public override void Configure()
     {
@@ -59,7 +61,7 @@ public class SendInstallmentReminderEndpoint : EndpointWithoutRequest<Installmen
 
         var note = await InstallmentReminders.SendAsync(
             _db, _sender, _clock, p.PolicyId.Value, p.PolicyNo, p.Name ?? "-", p.Email, p.Phone,
-            p.InstallmentSeq.Value, p.Amount, p.DueDate, ct, p.LineUserId);
+            p.InstallmentSeq.Value, p.Amount, p.DueDate, ct, p.LineUserId, _qr);
 
         Response = new InstallmentReminderResponse(note.Id, note.Channel, note.Recipient, note.Status);
     }

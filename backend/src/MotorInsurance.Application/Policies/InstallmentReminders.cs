@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using MotorInsurance.Application.Common.Interfaces;
+using MotorInsurance.Application.Payments;
 using MotorInsurance.Application.Renewals;
 using MotorInsurance.Domain.Entities;
 using MotorInsurance.Domain.Enums;
@@ -24,7 +25,8 @@ public static class InstallmentReminders
     /// </summary>
     public static async Task<int> SendDueRemindersAsync(
         IAppDbContext db, INotificationSender sender, IDateTimeProvider clock,
-        IReadOnlyList<int> reminderDays, DateOnly today, CancellationToken ct = default)
+        IReadOnlyList<int> reminderDays, DateOnly today, CancellationToken ct = default,
+        IPromptPayQrGenerator? qr = null)
     {
         if (reminderDays is null || reminderDays.Count == 0) return 0;
 
@@ -69,7 +71,10 @@ public static class InstallmentReminders
                        "กรุณาชำระภายในกำหนดเพื่อคงความคุ้มครอง";
 
             var (channel, recipient) = RenewalReminders.PickChannel(inst.Email, inst.Phone, inst.LineUserId);
-            var ok = await sender.SendAsync(new NotificationMessage(channel, recipient, subject, body), ct);
+            var att = PromptPayReminderAttachment.For(qr, channel, inst.PolicyNo, inst.Amount);
+            body += att.BodyLine;
+            var ok = await sender.SendAsync(
+                new NotificationMessage(channel, recipient, subject, body, att.Bytes, att.Name, att.ContentType), ct);
 
             db.Notifications.Add(new Notification
             {
