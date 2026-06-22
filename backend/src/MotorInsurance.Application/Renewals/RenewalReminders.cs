@@ -34,21 +34,30 @@ public static class RenewalReminders
         var (channel, recipient) = PickChannel(email, phone, lineUserId);
 
         var expiryText = expiry?.ToString("dd/MM/yyyy", Th) ?? "-";
-        var premiumText = estimatedPremium is { } premium
-            ? $"{premium.ToString("N2", Th)} บาท (ราคาจริงยืนยันเมื่อออกกรมธรรม์)"
-            : "ยืนยันเมื่อออกกรมธรรม์";
+
+        // Quote the price only when we actually have one; otherwise the whole "เบี้ยต่ออายุ" line
+        // (label included) is omitted via the empty {{premiumLine}} token — no misleading placeholder.
+        var premiumText = "ยืนยันเมื่อออกกรมธรรม์";
+        var premiumLine = "";
+        if (estimatedPremium is { } premium)
+        {
+            premiumText = $"{premium.ToString("N2", Th)} บาท (ราคาจริงยืนยันเมื่อออกกรมธรรม์)";
+            premiumLine = $"\nเบี้ยต่ออายุโดยประมาณ {premiumText}";
+        }
+
         var vars = new Dictionary<string, string>
         {
             ["customerName"] = customerName,
             ["policyNo"] = policyNo,
             ["expiryDate"] = expiryText,
-            ["estimatedPremium"] = premiumText,
+            ["premiumLine"] = premiumLine,        // full line incl. label, empty when no quote
+            ["estimatedPremium"] = premiumText,   // legacy token, for templates predating premiumLine
         };
         var (subject, body) = await NotificationTemplates.RenderAsync(
             db, "renewal", vars,
             "แจ้งเตือนต่ออายุกรมธรรม์ {{policyNo}}",
             "เรียน {{customerName}}\nกรมธรรม์เลขที่ {{policyNo}} จะหมดอายุวันที่ {{expiryDate}} " +
-            "กรุณาติดต่อเจ้าหน้าที่เพื่อต่ออายุความคุ้มครอง\nเบี้ยต่ออายุโดยประมาณ {{estimatedPremium}}", ct);
+            "กรุณาติดต่อเจ้าหน้าที่เพื่อต่ออายุความคุ้มครอง{{premiumLine}}", ct);
 
         var ok = await sender.SendAsync(new NotificationMessage(channel, recipient, subject, body), ct);
 

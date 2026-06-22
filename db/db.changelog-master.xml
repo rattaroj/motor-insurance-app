@@ -256,4 +256,15 @@
       DROP TABLE IF EXISTS notification_template;
     </rollback>
   </changeSet>
+
+  <changeSet id="V025-renewal-template-premium-line" author="rattaroj.nit">
+    <sqlFile path="./scripts/V025__renewal_template_premium_line.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      UPDATE notification_template
+      SET body = N'เรียน {{customerName}}
+กรมธรรม์เลขที่ {{policyNo}} จะหมดอายุวันที่ {{expiryDate}} กรุณาติดต่อเจ้าหน้าที่เพื่อต่ออายุความคุ้มครอง
+เบี้ยต่ออายุโดยประมาณ {{estimatedPremium}}'
+      WHERE template_key = 'renewal';
+    </rollback>
+  </changeSet>
 </databaseChangeLog>
