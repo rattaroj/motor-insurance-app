@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using MotorInsurance.Application.Claims;
 using MotorInsurance.Application.Common.Interfaces;
 using MotorInsurance.Application.Notifications;
 using MotorInsurance.Application.Policies;
@@ -18,6 +19,8 @@ public class PolicyLifecycleOptions
     public bool AutoSuspendOverdue { get; set; } = true;
     /// <summary>Send installment-due reminders ahead of the due date (see <see cref="InstallmentReminderDays"/>).</summary>
     public bool AutoRemindInstallments { get; set; } = true;
+    /// <summary>Alert claim supervisors when an open claim breaches its per-status SLA.</summary>
+    public bool AutoEscalateClaims { get; set; } = true;
     public double RunIntervalHours { get; set; } = 6;
     /// <summary>How far ahead to look for expiring policies when auto-reminding.</summary>
     public int ReminderWindowDays { get; set; } = 60;
@@ -89,6 +92,22 @@ public class PolicyLifecycleWorker : BackgroundService
         if (_opt.AutoRemindInstallments) await RemindInstallmentsAsync(db, sender, clock, today, ct);
         if (_opt.AutoSuspendOverdue) await SuspendOverdueAsync(db, sender, clock, today, ct);
         if (_opt.AutoRemind) await RemindAsync(db, sender, clock, today, ct);
+        if (_opt.AutoEscalateClaims)
+        {
+            var reader = scope.ServiceProvider.GetRequiredService<IClaimAgingReader>();
+            await EscalateClaimsAsync(db, reader, sender, clock, ct);
+        }
+    }
+
+    /// <summary>
+    /// Pushes SLA-breached open claims to the claims supervisors so a stuck claim can't sit unseen
+    /// in the aging worklist. Delegates to <see cref="ClaimEscalation"/> (idempotent per status-entry).
+    /// </summary>
+    private async Task EscalateClaimsAsync(
+        IAppDbContext db, IClaimAgingReader reader, INotificationSender sender, IDateTimeProvider clock, CancellationToken ct)
+    {
+        var n = await ClaimEscalation.SendEscalationsAsync(db, reader, sender, clock, ct);
+        if (n > 0) _log.LogInformation("Escalated {Count} SLA-breached claim(s).", n);
     }
 
     /// <summary>
