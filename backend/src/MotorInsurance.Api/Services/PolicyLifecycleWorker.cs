@@ -21,6 +21,10 @@ public class PolicyLifecycleOptions
     public bool AutoRemindInstallments { get; set; } = true;
     /// <summary>Alert claim supervisors when an open claim breaches its per-status SLA.</summary>
     public bool AutoEscalateClaims { get; set; } = true;
+    /// <summary>Email a weekly portfolio digest to dashboard readers (once per week, on <see cref="DigestDayOfWeek"/>).</summary>
+    public bool AutoWeeklyDigest { get; set; } = true;
+    /// <summary>Day of week the weekly portfolio digest is sent (default Monday).</summary>
+    public DayOfWeek DigestDayOfWeek { get; set; } = DayOfWeek.Monday;
     public double RunIntervalHours { get; set; } = 6;
     /// <summary>How far ahead to look for expiring policies when auto-reminding.</summary>
     public int ReminderWindowDays { get; set; } = 60;
@@ -101,6 +105,20 @@ public class PolicyLifecycleWorker : BackgroundService
             var reader = scope.ServiceProvider.GetRequiredService<IClaimAgingReader>();
             await EscalateClaimsAsync(db, reader, sender, clock, ct);
         }
+        if (_opt.AutoWeeklyDigest && today.DayOfWeek == _opt.DigestDayOfWeek)
+            await SendWeeklyDigestAsync(db, sender, clock, ct);
+    }
+
+    /// <summary>
+    /// Emails the weekly portfolio digest to dashboard readers. Gated to <see cref="PolicyLifecycleOptions.DigestDayOfWeek"/>
+    /// in <see cref="RunOnceAsync"/>; <see cref="PortfolioDigest"/> is itself idempotent per week, so the worker
+    /// firing several times on that day still yields one email.
+    /// </summary>
+    private async Task SendWeeklyDigestAsync(
+        IAppDbContext db, INotificationSender sender, IDateTimeProvider clock, CancellationToken ct)
+    {
+        var n = await PortfolioDigest.SendWeeklyDigestAsync(db, clock, sender, ct);
+        if (n > 0) _log.LogInformation("Sent weekly portfolio digest.");
     }
 
     /// <summary>
