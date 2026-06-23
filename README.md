@@ -106,12 +106,14 @@ npm run dev           # → http://localhost:3000
 | แนบรูปความเสียหาย | `UploadClaimPhotoEndpoint` | `POST /api/claims/{id}/photos` (multipart) |
 | ชำระเงิน | `SettlePaymentEndpoint` | `POST /api/payments/{id}/settle` |
 | QR พร้อมเพย์ (เบี้ยรอชำระ) | `GetPromptPayQrEndpoint` | `GET /api/payments/{id}/promptpay-qr` (PNG) |
+| Webhook พร้อมเพย์ (ตัดชำระอัตโนมัติ) | `PromptPayWebhookEndpoint` | `POST /api/payments/promptpay/webhook` (anonymous + `X-Webhook-Secret`) |
 | สลักหลังกรมธรรม์ (แก้ข้อมูลลูกค้า) | `CreateEndorsementEndpoint` | `POST /api/policies/{policyId}/endorsements` |
 | สลักหลังปรับความคุ้มครอง (+ เบี้ย pro-rata) | `CoverageEndorsementEndpoint` | `POST /api/policies/{id}/coverage-endorsement` |
 | ดูกรมธรรม์ / ประวัติ (temporal) | `GetPolicies/PolicyHistoryEndpoint` | `GET /api/policies` · `/{id}/history` |
 | ไทม์ไลน์กิจกรรมกรมธรรม์ (audit) | `GetPolicyActivityEndpoint` | `GET /api/policies/{id}/activity` |
 | PDF ตารางกรมธรรม์ / ใบเสร็จ | `GetPolicyDocument/PaymentReceiptEndpoint` | `GET /api/policies/{id}/document` · `/api/payments/{id}/receipt` |
 | แดชบอร์ดงานค้าง (counts) / รายงาน-วิเคราะห์ | `DashboardSummary/AnalyticsEndpoint` | `GET /api/dashboard/summary` · `/api/reports/analytics` |
+| อัตราปิดการขาย (ใบเสนอราคา→กรมธรรม์) | `ConversionEndpoint` | `GET /api/reports/conversion` · `/api/reports/conversion/export` (CSV) |
 | จัดการผู้ใช้/บทบาท (ADMIN) | `User/RoleEndpoints` | `GET/POST/PUT/DELETE /api/users` · `GET /api/roles` · `POST /api/users/{id}/reset-password` |
 
 ### Master data (CRUD — ใช้ permission `lookup.read` / `lookup.manage`)
@@ -194,9 +196,13 @@ npm run dev           # → http://localhost:3000
 
 `GET /api/payments/{id}/promptpay-qr` สร้าง **EMVCo PromptPay payload + CRC-16** ระบุจำนวนเงิน แล้ว render เป็น PNG (QRCoder) — payee ตั้งใน `PromptPay:Target` (appsettings)
 
+`POST /api/payments/promptpay/webhook` คือ callback จาก gateway เมื่อชำระ QR สำเร็จ — จับคู่กับรายการรับเบี้ยที่รอชำระด้วย `paymentNo` + ตรวจยอด แล้ว **ตัดชำระให้อัตโนมัติ** (กรมธรรม์ `Issued`→`Active`) ผ่าน `PaymentSettlement` ตัวเดียวกับปุ่มชำระ. เป็น anonymous แต่ต้องส่ง shared secret ใน header `X-Webhook-Secret`; ถ้าไม่ตั้ง `PromptPay:WebhookSecret` endpoint จะปิด (404) แบบเดียวกับ LINE channel. Idempotent: callback ซ้ำได้ 200 แบบ no-op ไม่ตัดซ้ำ
+
 ### รายงาน/วิเคราะห์ (หน้า `/reports`)
 
 `GET /api/reports/analytics` คืน: เบี้ยรับรายเดือน 12 เดือน (zero-filled), loss ratio (สินไหมจ่าย/เบี้ยรับ), และจำนวนตามสถานะกรมธรรม์/ชั้น/สถานะเคลม — FE วาดกราฟเองไม่พึ่ง chart lib
+
+`GET /api/reports/conversion` คืน funnel **ใบเสนอราคา→กรมธรรม์**: อัตราปิดการขาย, จำนวนรอตัดสินใจ/หมดอายุ, เบี้ยที่เสนอ/ปิดได้, เฉลี่ยวันจากเสนอถึงปิด, แยกตามชั้นความคุ้มครอง และเทรนด์รายเดือน (cohort ตามวันที่ออกใบเสนอราคา; นับเป็น "ปิด" เมื่อมี policy อ้างถึง `Policy.QuotationId`) — มี `/export` เป็น CSV
 
 ### เคลม: อู่/ผู้สำรวจภัย/รูปความเสียหาย
 
