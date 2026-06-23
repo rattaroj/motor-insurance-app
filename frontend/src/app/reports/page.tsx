@@ -1,12 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { useGetAnalyticsQuery, useExportAnalyticsMutation, type LabelCount } from '@/lib/api/insuranceApi';
+import {
+  useGetAnalyticsQuery,
+  useExportAnalyticsMutation,
+  useGetConversionQuery,
+  useExportConversionMutation,
+  type LabelCount,
+  type Conversion,
+} from '@/lib/api/insuranceApi';
 import { BarChart3 } from 'lucide-react';
 import {
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -66,6 +74,111 @@ function BarList({ items, labels, color }: { items: LabelCount[]; labels: Record
         </div>
       ))}
     </div>
+  );
+}
+
+/** Quote-to-bind conversion: KPIs, per-coverage funnel and the monthly quotes-vs-bound trend. */
+function ConversionSection({ from, to }: { from: string; to: string }) {
+  const { data, isFetching } = useGetConversionQuery({ from: from || undefined, to: to || undefined });
+  const [exportConversion] = useExportConversionMutation();
+
+  if (!data) return <Skeleton className="h-64" />;
+
+  const c: Conversion = data;
+  const monthly = c.byMonth.map((m) => ({ ...m, name: monthLabel(m.month) }));
+  const maxCov = Math.max(1, ...c.byCoverage.map((x) => x.quotes));
+
+  return (
+    <Card className={cn(isFetching && 'opacity-60 transition-opacity')}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-base">อัตราปิดการขาย (ใบเสนอราคา → กรมธรรม์)</CardTitle>
+        <ExportButton
+          filename="conversion.csv"
+          fetchUrl={() => exportConversion({ from: from || undefined, to: to || undefined }).unwrap()}
+        />
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Kpi
+            label="อัตราปิดการขาย"
+            value={`${(c.conversionRate * 100).toFixed(1)}%`}
+            accent="text-emerald-600 dark:text-emerald-400"
+          />
+          <Kpi label="ใบเสนอราคา / ปิดได้" value={`${c.totalQuotes} / ${c.boundQuotes}`} />
+          <Kpi
+            label="รอตัดสินใจ / หมดอายุ"
+            value={`${c.openQuotes} / ${c.expiredUnbound}`}
+            accent="text-amber-700 dark:text-amber-400"
+          />
+          <Kpi label="เฉลี่ยวันจากเสนอถึงปิด" value={`${c.avgDaysToBind.toFixed(1)} วัน`} />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Kpi label="เบี้ยที่เสนอรวม" value={fmtBaht(c.quotedPremium)} />
+          <Kpi
+            label="เบี้ยที่ปิดได้"
+            value={fmtBaht(c.boundPremium)}
+            accent="text-blue-700 dark:text-blue-400"
+          />
+        </div>
+
+        <div>
+          <p className="mb-3 text-sm font-medium text-muted-foreground">ตามชั้นความคุ้มครอง</p>
+          {c.byCoverage.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">ไม่มีข้อมูล</p>
+          ) : (
+            <div className="space-y-2.5">
+              {c.byCoverage.map((x) => (
+                <div key={x.coverage} className="flex items-center gap-3 text-sm">
+                  <span className="w-20 shrink-0 text-muted-foreground">{COVERAGE_TH[x.coverage] ?? x.coverage}</span>
+                  <div className="relative h-5 flex-1 overflow-hidden rounded bg-muted">
+                    <div className="h-full rounded bg-blue-200 dark:bg-blue-900" style={{ width: `${(x.quotes / maxCov) * 100}%` }} />
+                    <div className="absolute inset-y-0 left-0 rounded bg-emerald-500" style={{ width: `${(x.bound / maxCov) * 100}%` }} />
+                  </div>
+                  <span className="w-24 shrink-0 text-right font-medium tabular-nums">
+                    {x.bound}/{x.quotes} ({(x.rate * 100).toFixed(0)}%)
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={monthly} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                tickLine={false}
+                axisLine={{ stroke: 'hsl(var(--border))' }}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                tickLine={false}
+                axisLine={false}
+                width={32}
+                allowDecimals={false}
+              />
+              <Tooltip
+                cursor={{ fill: 'hsl(var(--accent))', opacity: 0.5 }}
+                contentStyle={{
+                  background: 'hsl(var(--popover))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: 8,
+                  color: 'hsl(var(--popover-foreground))',
+                  fontSize: 13,
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="quotes" name="ใบเสนอราคา" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} maxBarSize={28} />
+              <Bar dataKey="bound" name="ปิดได้" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={28} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -188,6 +301,8 @@ export default function ReportsPage() {
           <CardContent><BarList items={data.claimsByStatus} labels={CLAIM_STATUS_TH} color="bg-amber-500" /></CardContent>
         </Card>
       </div>
+
+      <ConversionSection from={from} to={to} />
         </div>
       )}
     </div>

@@ -531,6 +531,29 @@ export interface Analytics {
   policiesByCoverage: LabelCount[];
   claimsByStatus: LabelCount[];
 }
+export interface ConversionByCoverage {
+  coverage: string;
+  quotes: number;
+  bound: number;
+  rate: number;
+}
+export interface MonthConversion {
+  month: string;
+  quotes: number;
+  bound: number;
+}
+export interface Conversion {
+  totalQuotes: number;
+  boundQuotes: number;
+  conversionRate: number;
+  openQuotes: number;
+  expiredUnbound: number;
+  quotedPremium: number;
+  boundPremium: number;
+  avgDaysToBind: number;
+  byCoverage: ConversionByCoverage[];
+  byMonth: MonthConversion[];
+}
 
 /** One global-search result row (type: 'policy' | 'claim' | 'customer'). */
 export interface SearchHit {
@@ -1392,6 +1415,17 @@ export const insuranceApi = createApi({
       }),
       transformResponse: (blob: Blob) => URL.createObjectURL(blob),
     }),
+    getConversion: build.query<Conversion, { from?: string; to?: string } | void>({
+      query: (a) => `reports/conversion?${qs({ from: a?.from, to: a?.to })}`,
+      providesTags: ['Quotation', 'Policy'],
+    }),
+    exportConversion: build.mutation<string, { from?: string; to?: string } | void>({
+      query: (a) => ({
+        url: `reports/conversion/export?${qs({ from: a?.from, to: a?.to })}`,
+        responseHandler: (r) => r.blob(),
+      }),
+      transformResponse: (blob: Blob) => URL.createObjectURL(blob),
+    }),
     globalSearch: build.query<GlobalSearchResult, string>({
       query: (q) => `search?${qs({ q })}`,
     }),
@@ -1553,6 +1587,8 @@ export const {
   useGetDashboardSummaryQuery,
   useGetAnalyticsQuery,
   useExportAnalyticsMutation,
+  useGetConversionQuery,
+  useExportConversionMutation,
   useGlobalSearchQuery,
   useExportPoliciesMutation,
   useExportClaimsMutation,
