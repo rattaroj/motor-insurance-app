@@ -134,3 +134,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+// Exposed so the integration test project can boot the API in-process via WebApplicationFactory.
+public partial class Program { }
